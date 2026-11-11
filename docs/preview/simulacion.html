@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroLab Enterprise · Simulación del flujo completo</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 36px 24px 72px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at 12% 8%, #1f1017 0%, #0a0a0d 55%, #07080c 100%);
+      color: #f8fafc;
+      line-height: 1.55;
+    }
+    header, main { max-width: 1180px; margin: 0 auto; }
+    header { margin-bottom: 34px; }
+    h1 { font-size: 28px; margin: 0 0 10px; letter-spacing: -0.02em; }
+    .lead { margin: 0; color: rgba(241,245,249,0.7); font-size: 14px; max-width: 900px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .badge {
+      padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05);
+      color: rgba(241,245,249,0.88);
+    }
+    .badge.ok { color: #6ee7b7; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
+    .badge.warn { color: #fcd34d; background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); }
+    .badge.brand { color: #fda4af; background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.35); }
+
+    .summary {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px;
+      margin: 26px 0 6px;
+    }
+    .metric {
+      padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+    .metric .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(241,245,249,0.55); }
+    .metric .value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .metric .hint { font-size: 11.5px; color: rgba(241,245,249,0.55); margin-top: 2px; }
+
+    .step { display: grid; grid-template-columns: 56px 1fr; gap: 18px; margin-top: 40px; }
+    .rail { display: flex; flex-direction: column; align-items: center; }
+    .num {
+      width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center;
+      font-weight: 700; font-size: 15px; color: #fff;
+      background: linear-gradient(140deg, #e11d48, #9f1239);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 10px 24px rgba(225,29,72,0.28);
+    }
+    .line { width: 2px; flex: 1; margin-top: 8px; background: linear-gradient(180deg, rgba(225,29,72,0.45), rgba(255,255,255,0.06)); border-radius: 2px; }
+    .step:last-of-type .line { display: none; }
+    .step-body { min-width: 0; }
+    .step h2 { font-size: 18px; margin: 8px 0 6px; letter-spacing: -0.01em; }
+    .step p { margin: 0 0 12px; font-size: 14px; color: rgba(241,245,249,0.72); }
+    .step p code, .lead code { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: #fda4af; }
+    .frame {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(244,63,94,0.22);
+      box-shadow: 0 22px 54px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+      background: #0c0d13;
+    }
+    .frame img { display: block; width: 100%; height: auto; }
+    .caption { margin-top: 9px; font-size: 12.5px; color: rgba(241,245,249,0.6); }
+
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    th { color: rgba(241,245,249,0.55); font-weight: 600; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+    td.num { font-variant-numeric: tabular-nums; }
+    .ok { color: #6ee7b7; }
+    .warn { color: #fcd34d; }
+    .danger { color: #fca5a5; }
+
+    .callout {
+      border-radius: 14px; padding: 14px 16px; font-size: 13px;
+      border: 1px solid rgba(245,158,11,0.32); background: rgba(245,158,11,0.08);
+      color: rgba(254,243,199,0.92);
+    }
+    .callout.good { border-color: rgba(16,185,129,0.32); background: rgba(16,185,129,0.08); color: rgba(209,250,229,0.92); }
+    .callout strong { color: #fff; }
+    footer { max-width: 1180px; margin: 48px auto 0; font-size: 12px; color: rgba(241,245,249,0.45); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simulación del flujo completo · NeuroLab Enterprise</h1>
+    <p class="lead">
+      Recorrido real de extremo a extremo ejecutado sobre una instancia aislada de demostración
+      (SQLite temporal, API en <code>127.0.0.1:8010</code> y web en <code>127.0.0.1:5183</code>).
+      Cada captura proviene de la aplicación en ejecución, con el worker real de TensorFlow procesando
+      el trabajo. No hay datos inventados ni pantallas simuladas.
+    </p>
+    <div class="badges">
+      <span class="badge ok">Entrenamiento COMPLETED</span>
+      <span class="badge ok">Modelo v1.1 APPROVED</span>
+      <span class="badge brand">60 épocas en 34,9 s</span>
+      <span class="badge warn">Redis no disponible: telemetría por log local</span>
+    </div>
+
+    <div class="summary">
+      <div class="metric"><div class="label">Accuracy (test)</div><div class="value">85,56 %</div><div class="hint">90 muestras no vistas</div></div>
+      <div class="metric"><div class="label">F1 (clase positiva)</div><div class="value">75,47 %</div><div class="hint">Recall 80,00 %</div></div>
+      <div class="metric"><div class="label">ROC-AUC</div><div class="value">0,8782</div><div class="hint">PR-AUC 0,6911</div></div>
+      <div class="metric"><div class="label">Mejor baseline</div><div class="value warn">0,8070</div><div class="hint">Regresión logística (F1)</div></div>
+      <div class="metric"><div class="label">Parámetros</div><div class="value">3 265</div><div class="hint">MLP 64-32-16-1</div></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="step">
+      <div class="rail"><div class="num">1</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Panel del proyecto</h2>
+        <p>
+          El administrador entra con su cuenta y ve solo el proyecto asignado. El panel resume arquitecturas,
+          datasets, entrenamientos y versiones de modelo, y propone el siguiente paso del flujo.
+        </p>
+        <div class="frame"><img src="sim-01-panel.jpeg" alt="Panel general del proyecto con métricas reales" /></div>
+        <div class="caption">Proyecto «Predicción de Abandono de Clientes» · rol Administrador · estado ACTIVO.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">2</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Conjunto de datos verificado</h2>
+        <p>
+          El dataset se carga una vez, se valida y se le asigna un checksum. El sistema detecta la columna
+          objetivo <code>abandono</code>, el tipo de tarea y las características de entrada.
+        </p>
+        <div class="frame"><img src="sim-02-dataset.jpeg" alt="Detalle del conjunto de datos verificado" /></div>
+        <div class="caption">600 filas · 9 características · checksum <code>be994328…ddaf3d</code>.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">3</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Diseño de la red</h2>
+        <p>
+          La arquitectura se define antes de entrenar. Para este caso se usa una MLP de tres capas densas
+          con dropout, salida sigmoide y pérdida <code>binary_crossentropy</code>.
+        </p>
+        <div class="frame"><img src="sim-03-arquitectura.jpeg" alt="Diseñador de arquitecturas de red" /></div>
+        <div class="caption">Variante profunda 64-32-16 · 3 265 parámetros entrenables.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">4</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Trabajo en cola</h2>
+        <p>
+          Al lanzar el entrenamiento, la API crea un trabajo persistente con su configuración completa.
+          El estado inicial es <strong>En cola</strong> hasta que un worker lo reclama.
+        </p>
+        <div class="frame"><img src="sim-04-entrenamiento-en-cola.jpeg" alt="Trabajo de entrenamiento en cola" /></div>
+        <div class="caption">Job <code>3f06d656…</code> · 60 épocas · optimizador Adam · batch 8 · semilla 7.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">5</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Entrenamiento en ejecución</h2>
+        <p>
+          El worker cambia el estado a <strong>PREPARING → RUNNING</strong>, prepara los datos, entrena y
+          publica telemetría. La interfaz muestra curvas de entrenamiento y validación, velocidad y ETA.
+        </p>
+        <div class="frame"><img src="sim-05-entrenamiento-en-vivo.jpeg" alt="Entrenamiento en ejecución con curvas" /></div>
+        <div class="caption">Progreso reportado por la API durante la ejecución real del worker.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">6</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Entrenamiento completado</h2>
+        <p>
+          Al terminar, el worker evalúa el modelo sobre la partición de prueba, calcula baselines,
+          guarda los artefactos y genera la ficha técnica. El job queda en <strong>COMPLETED</strong>.
+        </p>
+        <div class="frame"><img src="sim-06-entrenamiento-completado.jpeg" alt="Entrenamiento completado con métricas finales" /></div>
+        <div class="caption">60/60 épocas · 34,9 s · mejor época 2 · early stopping: no · sobreajuste leve (14,99 %).</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">7</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Evaluación y métricas</h2>
+        <p>
+          La pantalla de evaluación cruza las predicciones con las etiquetas reales: matriz de confusión,
+          precisión, recall, F1 y comparación con el baseline. Los aciertos se marcan en verde y los errores en rojo.
+        </p>
+        <div class="frame"><img src="sim-07-evaluacion.jpeg" alt="Evaluación con matriz de confusión y métricas" /></div>
+        <div class="caption">Medición sobre 90 muestras de prueba no utilizadas durante el entrenamiento.</div>
+        <table>
+          <thead><tr><th>Métrica</th><th>Valor</th><th>Lectura</th></tr></thead>
+          <tbody>
+            <tr><td>Accuracy</td><td class="num ok">85,56 %</td><td>Coincidencia global sobre test</td></tr>
+            <tr><td>Balanced accuracy</td><td class="num ok">83,85 %</td><td>Compensa el desbalance de clases</td></tr>
+            <tr><td>Precision</td><td class="num">71,43 %</td><td>De los marcados como abandono, acierta 7 de cada 10</td></tr>
+            <tr><td>Recall</td><td class="num ok">80,00 %</td><td>Detecta 8 de cada 10 abandonos reales</td></tr>
+            <tr><td>F1</td><td class="num">75,47 %</td><td>Equilibrio entre precisión y recall</td></tr>
+            <tr><td>ROC-AUC</td><td class="num ok">0,8782</td><td>Buena separación de clases</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>Hallazgo honesto del sistema:</strong> el mejor baseline lineal (regresión logística)
+          obtiene F1 0,8070 y supera a la red (0,7547). La ficha técnica lo declara explícitamente y
+          recomienda revisar características, hiperparámetros o el tamaño del dataset antes de justificar
+          la complejidad adicional. El sistema no oculta un resultado adverso.
+        </div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">8</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Registro en borrador</h2>
+        <p>
+          El modelo nace en estado <strong>DRAFT</strong>. No puede publicarse sin pasar por revisión:
+          las transiciones permitidas son DRAFT → REVIEWED → APPROVED → RETIRED.
+        </p>
+        <div class="frame"><img src="sim-08-registro-borrador.jpeg" alt="Registro de modelos con versión en borrador" /></div>
+        <div class="caption">Versión v1.1 en DRAFT junto a la v1.0 aprobada que sigue en producción.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">9</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Ficha técnica del modelo</h2>
+        <p>
+          La ficha se genera automáticamente con datos reales: particiones, distribución de clases,
+          arquitectura, hiperparámetros, métricas, baselines, diagnóstico de generalización,
+          reproducibilidad, limitaciones y trazabilidad de artefactos.
+        </p>
+        <div class="frame"><img src="sim-09-ficha-tecnica.jpeg" alt="Ficha técnica del modelo generada automáticamente" /></div>
+        <div class="caption">Artefactos: <code>model.keras</code> (SHA-256 <code>c1b53cd6…</code>), <code>scaler.pkl</code>, <code>preprocessor.pkl</code>.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="rail"><div class="num">10</div><div class="line"></div></div>
+      <div class="step-body">
+        <h2>Aprobación y publicación</h2>
+        <p>
+          Un usuario con permiso revisa la versión y la aprueba. El cambio queda registrado en la auditoría
+          con el estado anterior y el nuevo. La versión aprobada pasa a ser la referencia publicada.
+        </p>
+        <div class="frame"><img src="sim-08-registro-aprobado.jpeg" alt="Registro de modelos con versión aprobada" /></div>
+        <div class="caption">v1.1 APPROVED tras DRAFT → REVIEWED → APPROVED.</div>
+        <div class="frame" style="margin-top:16px"><img src="sim-10-evaluacion-aprobada.jpeg" alt="Evaluación de la versión aprobada" /></div>
+        <div class="caption">La misma evidencia sigue disponible después de aprobar: el estado no borra las métricas.</div>
+        <div class="callout good" style="margin-top:14px">
+          <strong>Resultado de la simulación:</strong> el flujo completo funciona de punta a punta con
+          entrenamiento real, artefactos verificables, evaluación sobre datos no vistos, ficha técnica
+          automática y control de estados con auditoría.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Simulación ejecutada el 8 de noviembre de 2026 sobre la rama <code>mejoras_al_sistema</code>.
+    Instancia de demostración aislada en <code>%TEMP%\neurolab_demo</code>; no modifica la base de datos principal.
+    Entorno: Python 3.13.6 · TensorFlow 2.21.0 · Keras 3.15.1.
+  </footer>
+</body>
+</html>

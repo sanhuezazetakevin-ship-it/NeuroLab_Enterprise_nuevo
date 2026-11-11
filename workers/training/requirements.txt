@@ -1,0 +1,11 @@
+# Versiones fijadas: un cambio de TensorFlow/Keras puede alterar métricas.
+tensorflow==2.21.0
+keras==3.15.1
+numpy==2.5.2
+pandas==3.0.5
+scikit-learn==1.9.0
+redis==8.1.0
+SQLAlchemy==2.1.4
+psycopg2-binary==2.9.13
+python-dotenv==1.2.3
+boto3==1.43.126

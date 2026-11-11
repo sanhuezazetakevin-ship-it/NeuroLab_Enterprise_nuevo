@@ -1,0 +1,11 @@
+# Dependencias opcionales para servir inferencia desde la API.
+#
+# NO se instalan por defecto: TensorFlow ocupa cientos de MB y la API funciona
+# sin él. Instale este archivo solo si va a usar POST /models/{id}/predict:
+#
+#     pip install -r requirements-inference.txt
+#
+# Sin estas dependencias, /predict responde 503 y el resto de la API opera con
+# normalidad (descarga de modelos, ficha y manifiesto no las necesitan).
+tensorflow==2.21.0
+scikit-learn==1.9.0

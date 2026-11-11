@@ -1,0 +1,59 @@
+# Logs & caches
+*.log
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+
+# Python environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment and Secrets
+.env
+*.env.local
+apps/web/.env.production
+.env.production
+
+# Datos y binarios que no deben versionarse
+data_prueba_clientes.csv
+docs/NeuroLab_Enterprise_Reporte_Cumplimiento.pdf
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# TensorFlow / Keras artifacts
+*.h5
+*.keras
+*.pb
+checkpoints/
+saved_models/
+tensorboard_logs/
+
+# Database / Storage data
+pgdata/
+miniodata/
+redisdata/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+services/api/data/
+workers/training/data/

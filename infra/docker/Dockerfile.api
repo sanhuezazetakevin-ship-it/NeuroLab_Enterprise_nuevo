@@ -1,0 +1,43 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY services/api/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# La inferencia (TensorFlow + scikit-learn) es opcional: solo se instala si se
+# compila con --build-arg INSTALL_INFERENCE=true. Sin ella, POST /predict
+# responde 503 y el resto de la API funciona con normalidad.
+ARG INSTALL_INFERENCE=false
+COPY services/api/requirements-inference.txt ./requirements-inference.txt
+RUN if [ "$INSTALL_INFERENCE" = "true" ]; then \
+        pip install --no-cache-dir -r requirements-inference.txt; \
+    fi
+
+COPY services/api/app ./app
+COPY services/api/alembic ./alembic
+COPY services/api/alembic.ini ./alembic.ini
+COPY infra/docker/entrypoint.api.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh \
+    && useradd --system --uid 10001 --create-home appuser \
+    && mkdir -p /data/uploads /data/models \
+    && chown -R appuser:appuser /app /data
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+CMD ["sh", "/app/entrypoint.sh"]

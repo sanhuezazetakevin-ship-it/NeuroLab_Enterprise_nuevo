@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: neurolab_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-neurolab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neurolab_secure_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-neurolab_db}
+    ports:
+      # Sólo accesible desde el host local; no exponga PostgreSQL a Internet.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neurolab} -d ${POSTGRES_DB:-neurolab_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: neurolab_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # Sólo accesible desde el host local; no exponga Redis a Internet.
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+      args:
+        # INSTALL_INFERENCE=true añade TensorFlow/sklearn para /predict.
+        INSTALL_INFERENCE: ${INSTALL_INFERENCE:-false}
+    container_name: neurolab_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-neurolab}:${POSTGRES_PASSWORD:-neurolab_secure_pass}@postgres:5432/${POSTGRES_DB:-neurolab_db}
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_BACKEND: redis
+      TRAINING_QUEUE: neurolab:training:queue
+      DATA_DIR: /data/uploads
+      MODEL_DIR: /data/models
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # Nginx y la API comparten la red de Docker. Sólo se confía en
+      # X-Forwarded-For dentro de esa subred.
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-127.0.0.1,::1,172.16.0.0/12}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/data/uploads
+      - models:/data/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: neurolab_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-neurolab}:${POSTGRES_PASSWORD:-neurolab_secure_pass}@postgres:5432/${POSTGRES_DB:-neurolab_db}
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_BACKEND: redis
+      TRAINING_QUEUE: neurolab:training:queue
+      DATA_DIR: /data/uploads
+      MODEL_DIR: /data/models
+      TF_CPP_MIN_LOG_LEVEL: "2"
+    volumes:
+      - uploads:/data/uploads
+      - models:/data/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        VITE_API_URL: /api/v1
+    container_name: neurolab_web
+    restart: unless-stopped
+    ports:
+      - "5173:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  models:
