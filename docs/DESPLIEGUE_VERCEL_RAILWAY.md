@@ -31,8 +31,12 @@ importar el repositorio, sube los cambios:
 git status
 git add -A
 git commit -m "Flujo guiado, Supabase y configuración de despliegue"
-git push origin mejoras_al_sistema
+# El remoto `origin` apunta al repositorio antiguo. Usa el repo de despliegue:
+git push https://github.com/sanhuezazetakevin-ship-it/NeuroLab_Enterprise_nuevo.git main
 ```
+
+> Si ya tienes el remoto `nuevo` configurado, el comando equivalente es
+> `git push nuevo main`. Comprueba con `git remote -v` antes de subir.
 
 > Revisa `git status` antes de `git add -A`: si tienes archivos que no quieres
 > publicar (pruebas, capturas, datos), añádelos a `.gitignore` o sácalos del
