@@ -91,7 +91,6 @@ class ArchitectureValidator:
             current_shape = [current_shape[0], 1]
         total_params = 0
         trainable_params = 0
-        has_recurrent = False
 
         for idx, layer in enumerate(topology.layers):
             l_type = layer.type.strip()
@@ -232,7 +231,6 @@ class ArchitectureValidator:
                 rec_params = factor * ((in_dim + units) * units + units)
                 total_params += rec_params
                 trainable_params += rec_params
-                has_recurrent = True
                 if layer.return_sequences:
                     current_shape = [current_shape[0], units]
                 else:

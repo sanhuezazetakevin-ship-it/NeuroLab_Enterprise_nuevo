@@ -1,14 +1,14 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.core.database import get_db
-from app.core.deps import APPROVAL_ROLES, MODEL_STATUS_ROLES, WRITE_ROLES, ensure_project_role, get_current_user, project_access
+from app.core.deps import APPROVAL_ROLES, MODEL_STATUS_ROLES, ensure_project_role, get_current_user, project_access
 from app.core.storage import StorageError, storage
 from app.modules.audit.service import record_audit
 from app.repositories.models import ModelVersionModel, UserModel

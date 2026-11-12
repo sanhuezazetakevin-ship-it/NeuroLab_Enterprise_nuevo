@@ -96,3 +96,18 @@ def test_touch_job_renews_only_its_own_lease():
     job = _insert_job(status="RUNNING", heartbeat_at=old, worker_id="worker-1")
     db.touch_job(job, "worker-1")
     assert db.recover_orphaned_jobs(stale_after_seconds=60) == 0
+
+
+def test_claim_job_does_not_override_cancelled_or_completed():
+    now = datetime.now(timezone.utc)
+    queued = _insert_job(status="QUEUED", heartbeat_at=None)
+    cancelled = _insert_job(status="CANCELLED", heartbeat_at=None)
+    completed = _insert_job(status="COMPLETED", heartbeat_at=now)
+
+    assert db.claim_job(queued, worker_id="worker-1", heartbeat_at=now) is True
+    assert db.claim_job(cancelled, worker_id="worker-1", heartbeat_at=now) is False
+    assert db.claim_job(completed, worker_id="worker-1", heartbeat_at=now) is False
+
+    assert _status(queued) == "PREPARING"
+    assert _status(cancelled) == "CANCELLED"
+    assert _status(completed) == "COMPLETED"

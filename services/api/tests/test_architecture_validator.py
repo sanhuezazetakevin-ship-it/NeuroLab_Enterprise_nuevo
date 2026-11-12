@@ -1,4 +1,3 @@
-import pytest
 from app.modules.architectures.validator import ArchitectureValidator
 from app.schemas.architecture import NetworkTopology, LayerConfig
 

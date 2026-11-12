@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import require_roles
 from app.core.security import get_password_hash
 from app.modules.audit.service import record_audit
 from app.modules.training.queue import redis_health, training_queue

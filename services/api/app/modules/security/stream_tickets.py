@@ -13,12 +13,15 @@ con caducidad, suficiente para un único proceso de API.
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 import time
 from typing import Dict, Optional, Tuple
 
 from app.core.config import settings
 from app.modules.training.queue import redis_client
+
+logger = logging.getLogger(__name__)
 
 TICKET_PREFIX = "neurolab:stream-ticket:"
 
@@ -51,7 +54,7 @@ async def issue_stream_ticket(*, job_id: str, user_id: str) -> str:
         except Exception:
             # Si Redis falla, el stream seguirá funcionando con el respaldo
             # en memoria y el sondeo a PostgreSQL.
-            pass
+            logger.warning("Redis no disponible al emitir ticket; se usa respaldo en memoria", exc_info=True)
         finally:
             await client.aclose()
 
@@ -72,7 +75,7 @@ async def consume_stream_ticket(*, ticket: str, job_id: str) -> Optional[dict]:
                 payload = json.loads(raw)
                 return payload if payload.get("job_id") == str(job_id) else None
         except Exception:
-            pass
+            logger.warning("Redis no disponible al consumir ticket; se usa respaldo en memoria", exc_info=True)
         finally:
             await client.aclose()
 

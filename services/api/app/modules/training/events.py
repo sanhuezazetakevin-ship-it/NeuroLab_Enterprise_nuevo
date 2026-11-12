@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import AsyncGenerator, Dict, List, Optional
 from uuid import UUID
 
@@ -8,6 +9,8 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.modules.training.queue import redis_client
 from app.repositories.models import TrainingJobModel, TrainingMetricModel
+
+logger = logging.getLogger(__name__)
 
 TERMINAL_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 CHANNEL_PREFIX = "neurolab:job"
@@ -143,7 +146,7 @@ async def stream_job_events(
                 await pubsub.unsubscribe(f"{CHANNEL_PREFIX}:{job_id}:events")
                 await pubsub.close()
             except Exception:
-                pass
+                logger.debug("Error al cerrar la suscripción pub/sub", exc_info=True)
         if client is not None:
             await client.aclose()
 

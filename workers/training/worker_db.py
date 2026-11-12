@@ -169,6 +169,25 @@ def connection() -> Iterator[Any]:
         yield conn
 
 
+def claim_job(job_id: uuid.UUID, **fields: Any) -> bool:
+    """Pasa el trabajo a PREPARING solo si no fue cancelado ni completado.
+
+    Es un UPDATE condicional: si la API canceló el trabajo en cola entre la
+    lectura y el reclamo, el CANCELLED prevalece. Devuelve True si lo reclamó.
+    """
+    values = {"status": "PREPARING", **fields}
+    with connection() as conn:
+        result = conn.execute(
+            update(training_jobs)
+            .where(
+                training_jobs.c.id == job_id,
+                training_jobs.c.status.notin_(["CANCELLED", "COMPLETED"]),
+            )
+            .values(**values)
+        )
+        return bool(result.rowcount)
+
+
 def update_job(job_id: uuid.UUID, **fields: Any) -> None:
     if not fields:
         return
