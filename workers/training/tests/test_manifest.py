@@ -6,7 +6,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pandas as pd
-import pytest
 
 from manifest import build_manifest, render_model_card
 from preprocessing import prepare_dataset

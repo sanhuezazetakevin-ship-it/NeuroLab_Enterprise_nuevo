@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -13,7 +14,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -25,7 +26,6 @@ from app.modules.audit.service import record_audit
 from app.modules.security.stream_tickets import consume_stream_ticket, issue_stream_ticket
 from app.modules.training.events import (
     format_sse,
-    job_snapshot,
     metric_rows_to_history,
     stream_job_events,
 )
@@ -40,6 +40,8 @@ from app.repositories.models import (
 )
 from app.schemas.architecture import NetworkTopology
 from app.schemas.training import TrainingJobCreate, TrainingJobResponse, TrainingMetricResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Entrenamientos"])
 
@@ -323,12 +325,24 @@ async def cancel_training_job(
 
     job.cancel_requested = True
 
+    cancelled_in_queue = False
     if job.status == "QUEUED":
-        # Aún no lo reclamó el worker: se cancela de inmediato. Antes quedaba
-        # "En cola" indefinidamente si no había un worker activo que aplicara
-        # la solicitud.
-        job.status = "CANCELLED"
-        job.ended_at = datetime.now(timezone.utc)
+        # Aún no lo reclamó el worker: se cancela de inmediato. La transición es
+        # condicional (UPDATE ... WHERE status='QUEUED') para que, si el worker lo
+        # reclama a la vez, no se pisen mutuamente los estados.
+        result = await db.execute(
+            update(TrainingJobModel)
+            .where(TrainingJobModel.id == job.id, TrainingJobModel.status == "QUEUED")
+            .values(
+                status="CANCELLED",
+                cancel_requested=True,
+                ended_at=datetime.now(timezone.utc),
+            )
+        )
+        cancelled_in_queue = bool(result.rowcount)
+        await db.refresh(job)
+
+    if cancelled_in_queue:
         await record_audit(
             db,
             actor_id=user.id,
@@ -474,4 +488,4 @@ async def websocket_job_events(
         try:
             await websocket.close()
         except Exception:
-            pass
+            logger.debug("El WebSocket ya estaba cerrado", exc_info=True)

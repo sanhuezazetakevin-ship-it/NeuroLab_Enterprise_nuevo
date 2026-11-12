@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import time
 from collections import defaultdict, deque
 from typing import Deque, Dict, Optional
@@ -21,6 +22,8 @@ from fastapi import HTTPException, Request, status
 
 from app.core.config import settings
 from app.modules.training.queue import redis_client
+
+logger = logging.getLogger(__name__)
 
 IP_WINDOW_SECONDS = 60
 
@@ -105,7 +108,7 @@ class LoginRateLimiter:
         try:
             await client.delete(key)
         except Exception:
-            pass
+            logger.warning("No fue posible limpiar la clave de rate limit en Redis", exc_info=True)
         finally:
             await client.aclose()
 

@@ -178,15 +178,19 @@ class TrainingWorkerDaemon:
             return "CANCELLED"
 
         logger.info("==> Trabajo %s: QUEUED -> PREPARING", job_id)
-        db.set_job_status(
+        claimed = db.claim_job(
             job_id,
-            "PREPARING",
             progress=0.0,
             started_at=_now(),
             error_message="",
             worker_id=WORKER_ID,
             heartbeat_at=_now(),
         )
+        if not claimed:
+            current = db.get_job(job_id)
+            status = str((current or {}).get("status") or "CANCELLED")
+            logger.info("Trabajo %s ya no es reclamable (estado %s); se omite.", job_id, status)
+            return status
         try:
             db.clear_metrics(job_id)
         except Exception:
