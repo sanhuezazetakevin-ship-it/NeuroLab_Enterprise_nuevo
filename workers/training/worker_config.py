@@ -13,8 +13,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else Path(__file__).resolve().parent
 API_DIR = ROOT_DIR / "services" / "api"
+
+# En la imagen Docker el worker vive en /app: no existe services/api y los
+# artefactos se resuelven contra el directorio del propio worker.
+if not API_DIR.is_dir():
+    API_DIR = Path(__file__).resolve().parent
 
 # El archivo .env de la raíz es el que usa docker-compose. El de la API se usa
 # como respaldo para ejecuciones locales desde services/api.
@@ -94,6 +99,7 @@ MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
 MAX_FEATURES_AFTER_ENCODING = int(os.getenv("MAX_FEATURES_AFTER_ENCODING", "5000"))
 
 TRAINING_TIMEOUT_SECONDS = int(os.getenv("TRAINING_TIMEOUT_SECONDS", "7200"))
+WORKER_HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("WORKER_HEARTBEAT_TIMEOUT_SECONDS", "900"))
 QUEUE_POLL_SECONDS = float(os.getenv("QUEUE_POLL_SECONDS", "2.0"))
 CODE_VERSION = os.getenv("CODE_VERSION", "1.0.0")
 

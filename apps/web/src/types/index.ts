@@ -43,11 +43,14 @@ export type NetworkFamily = 'FEEDFORWARD' | 'RNN' | 'CNN' | 'GAN';
 export type LayerType =
   | 'Dense'
   | 'Dropout'
+  | 'Conv1D'
   | 'Conv2D'
+  | 'MaxPooling1D'
   | 'MaxPooling2D'
   | 'Flatten'
   | 'LSTM'
   | 'GRU'
+  | 'SimpleRNN'
   | 'BatchNormalization';
 
 export type ActivationFunction =
@@ -66,8 +69,8 @@ export interface LayerConfig {
   activation?: ActivationFunction;
   rate?: number;
   filters?: number;
-  kernelSize?: [number, number];
-  poolSize?: [number, number];
+  kernelSize?: number[];
+  poolSize?: number[];
   returnSequences?: boolean;
 }
 
@@ -169,7 +172,7 @@ export type JobStatus = 'QUEUED' | 'PREPARING' | 'RUNNING' | 'COMPLETED' | 'FAIL
 export interface Hyperparameters {
   epochs: number;
   batchSize: number;
-  optimizer: 'adam' | 'sgd' | 'rmsprop';
+  optimizer: 'adam' | 'sgd' | 'rmsprop' | 'adamw' | 'nadam';
   learningRate: number;
   loss?: string;
   metrics?: string[];

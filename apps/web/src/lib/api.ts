@@ -24,7 +24,9 @@ import {
   UserRole,
 } from '../types';
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
+// En producción Vercel inyecta VITE_API_URL. El valor por defecto apunta a la
+// instancia local de NeuroLab (8000/5173 están reservados para VisionIA).
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8012/api/v1').replace(/\/$/, '');
 const TOKEN_KEY = 'neurolab_token';
 
 type Json = Record<string, any>;
@@ -614,13 +616,18 @@ export class ApiClient {
     return normalizeTrainingJob(data);
   }
 
-  static async cancelTraining(jobId: string) {
+  static async cancelTraining(
+    jobId: string,
+  ): Promise<{ message: string; status: string; cancel_requested: boolean }> {
     return this.request(`/training-jobs/${jobId}/cancel`, { method: 'POST' });
   }
 
-  static jobEventsUrl(jobId: string): string {
-    const token = this.token ? `?token=${encodeURIComponent(this.token)}` : '';
-    return `${API_BASE}/training-jobs/${jobId}/events${token}`;
+  static async createJobEventsUrl(jobId: string): Promise<string> {
+    const data = await this.request<{ ticket: string; expires_in: number }>(
+      `/training-jobs/${jobId}/events-ticket`,
+      { method: 'POST' },
+    );
+    return `${API_BASE}/training-jobs/${jobId}/events?ticket=${encodeURIComponent(data.ticket)}`;
   }
 
   // --------------------------------------------------------------- Models

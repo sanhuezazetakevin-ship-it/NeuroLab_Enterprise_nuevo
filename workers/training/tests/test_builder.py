@@ -36,7 +36,7 @@ def _build(config=None, *, seed=42, input_dim=4, family="FEEDFORWARD"):
 
 def test_rejects_families_not_supported_for_tabular_data():
     with pytest.raises(ModelBuildError, match="no está habilitada"):
-        _build(family="CNN")
+        _build(family="GAN")
 
 
 def test_rejects_input_shape_mismatch():
@@ -45,9 +45,28 @@ def test_rejects_input_shape_mismatch():
 
 
 def test_rejects_unsupported_layer():
-    config = {"input_shape": [4], "layers": [{"type": "Conv2D"}]}
-    with pytest.raises(ModelBuildError, match="no es compatible"):
+    config = {"input_shape": [4], "layers": [{"type": "Attention"}]}
+    with pytest.raises(ModelBuildError, match="no soportado"):
         _build(config)
+
+
+def test_rejects_2d_layers_for_tabular_data():
+    config = {"input_shape": [4], "layers": [{"type": "Conv2D"}]}
+    with pytest.raises(ModelBuildError, match="no está soportada"):
+        _build(config, family="CNN")
+
+
+def test_builds_cnn_1d_for_tabular_data():
+    config = {
+        "input_shape": [4],
+        "layers": [
+            {"type": "Conv1D", "filters": 8, "kernel_size": [3], "activation": "relu"},
+            {"type": "MaxPooling1D", "pool_size": [2]},
+            {"type": "Flatten"},
+        ],
+    }
+    model = _build(config, family="CNN")
+    assert model.output_shape == (None, 1)
 
 
 def test_output_layer_matches_task():

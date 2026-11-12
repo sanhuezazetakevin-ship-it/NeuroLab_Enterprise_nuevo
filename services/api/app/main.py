@@ -26,6 +26,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("neurolab.api")
 
+API_V1_PREFIX = settings.API_V1_STR
+DOCS_PATHS = (API_V1_PREFIX + "/docs", API_V1_PREFIX + "/redoc")
+STRICT_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+DOCS_CSP = (
+    "default-src 'none'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; "
+    "font-src https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
+    "img-src 'self' https://fastapi.tiangolo.com data:; "
+    "connect-src 'self'; "
+    "base-uri 'none'; frame-ancestors 'none'"
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,10 +80,15 @@ async def security_headers(request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        DOCS_CSP if request.url.path in DOCS_PATHS else STRICT_CSP,
+    )
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
     return response
 
 
-api_v1 = settings.API_V1_STR
+api_v1 = API_V1_PREFIX
 app.include_router(auth_router, prefix=api_v1)
 app.include_router(admin_router, prefix=api_v1)
 app.include_router(projects_router, prefix=api_v1)

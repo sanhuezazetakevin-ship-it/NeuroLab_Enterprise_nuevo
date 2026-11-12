@@ -220,7 +220,7 @@ export const AdministrationView: React.FC = () => {
       { module: 'M02 Proyectos (Crear/Editar)', admin: true, lead: true, engineer: true, reviewer: false, viewer: false },
       { module: 'M03 Fundamentos (Lectura)', admin: true, lead: true, engineer: true, reviewer: true, viewer: true },
       { module: 'M04 Diseñador (Crear/Editar)', admin: true, lead: true, engineer: true, reviewer: false, viewer: false },
-      { module: 'M05 Datasets (Subir/Eliminar)', admin: true, lead: true, engineer: true, reviewer: false, viewer: false },
+      { module: 'M05 Conjuntos de datos (Subir/Eliminar)', admin: true, lead: true, engineer: true, reviewer: false, viewer: false },
       { module: 'M06 Entrenamientos (Iniciar/Cancelar)', admin: true, lead: true, engineer: true, reviewer: false, viewer: false },
       { module: 'M07 Evaluación (Consultar Métricas)', admin: true, lead: true, engineer: true, reviewer: true, viewer: true },
       { module: 'M08 Registro (Aprobar/Retirar)', admin: true, lead: true, engineer: false, reviewer: false, viewer: false },
@@ -247,7 +247,7 @@ export const AdministrationView: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Acceso restringido</h3>
-            <p className="text-xs text-zinc-500 dark:text-white/50 mt-1 max-w-md">
+            <p className="text-xs text-zinc-500 dark:text-white/65 mt-1 max-w-md">
               La administración de usuarios y el estado del sistema están disponibles únicamente para el rol
               ADMIN. Su rol actual es <strong className="font-mono text-zinc-700 dark:text-white/70">{currentRole}</strong>.
             </p>
@@ -267,7 +267,7 @@ export const AdministrationView: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Control de Acceso (RBAC), Usuarios &amp; Auditoría
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
             Gobernanza corporativa, cuentas reales en PostgreSQL, estado de servicios y trazabilidad de
             acciones por proyecto.
           </p>
@@ -302,7 +302,7 @@ export const AdministrationView: React.FC = () => {
               <Users className="w-4 h-4 text-zinc-600 dark:text-white/70" /> Directorio de Usuarios ({users.length})
             </h2>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-white/65 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Buscar por nombre, correo o rol…"
@@ -323,7 +323,7 @@ export const AdministrationView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+                  <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                     <th className="pb-2.5 font-medium">Usuario</th>
                     <th className="pb-2.5 font-medium">Rol</th>
                     <th className="pb-2.5 font-medium">Estado</th>
@@ -340,12 +340,12 @@ export const AdministrationView: React.FC = () => {
                           <div className="font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
                             {item.displayName}
                             {isSelf && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/50">
+                              <span className="text-xs font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                                 tú
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-zinc-600 dark:text-white/50 font-mono">{item.email}</div>
+                          <div className="text-xs text-zinc-600 dark:text-white/65 font-mono">{item.email}</div>
                         </td>
                         <td className="py-3">
                           <select
@@ -354,7 +354,7 @@ export const AdministrationView: React.FC = () => {
                             onChange={(event) =>
                               handleUserUpdate(item, { role: event.target.value as UserRole })
                             }
-                            className="glass-input rounded-lg px-2 py-1 text-[11px] bg-transparent dark:bg-zinc-900 text-zinc-900 dark:text-white disabled:opacity-50"
+                            className="glass-input rounded-lg px-2 py-1 text-xs bg-transparent dark:bg-zinc-900 text-zinc-900 dark:text-white disabled:opacity-50"
                           >
                             {ROLES.map((role) => (
                               <option
@@ -373,7 +373,7 @@ export const AdministrationView: React.FC = () => {
                             disabled={busy || isSelf}
                             title={isSelf ? 'No puede desactivar su propia cuenta' : undefined}
                             onChange={(event) => handleUserUpdate(item, { status: event.target.value })}
-                            className="glass-input rounded-lg px-2 py-1 text-[11px] bg-transparent dark:bg-zinc-900 text-zinc-900 dark:text-white disabled:opacity-50"
+                            className="glass-input rounded-lg px-2 py-1 text-xs bg-transparent dark:bg-zinc-900 text-zinc-900 dark:text-white disabled:opacity-50"
                           >
                             {STATUSES.map((status) => (
                               <option
@@ -386,7 +386,7 @@ export const AdministrationView: React.FC = () => {
                             ))}
                           </select>
                         </td>
-                        <td className="py-3 text-zinc-500 dark:text-white/50 font-mono text-[11px] whitespace-nowrap">
+                        <td className="py-3 text-zinc-500 dark:text-white/65 font-mono text-xs whitespace-nowrap">
                           {busy ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
@@ -409,7 +409,7 @@ export const AdministrationView: React.FC = () => {
             </h2>
             {system && (
               <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full glass-inset border ${
+                className={`text-xs font-mono px-2 py-0.5 rounded-full glass-inset border ${
                   system.status === 'healthy'
                     ? 'text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                     : 'text-amber-700 dark:text-amber-300 border-amber-500/30'
@@ -420,7 +420,7 @@ export const AdministrationView: React.FC = () => {
             )}
           </div>
 
-          {systemError && <p className="text-[11px] text-rose-600 dark:text-rose-300">{systemError}</p>}
+          {systemError && <p className="text-xs text-rose-600 dark:text-rose-300">{systemError}</p>}
 
           {system ? (
             <div className="space-y-3 text-xs">
@@ -435,7 +435,7 @@ export const AdministrationView: React.FC = () => {
                 const Icon = row.icon;
                 return (
                   <div key={row.label} className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-white/50 flex items-center gap-1.5">
+                    <span className="text-zinc-500 dark:text-white/65 flex items-center gap-1.5">
                       <Icon className="w-3.5 h-3.5" /> {row.label}
                     </span>
                     <span className="font-mono text-zinc-800 dark:text-white/80 truncate">{row.value}</span>
@@ -444,14 +444,14 @@ export const AdministrationView: React.FC = () => {
               })}
 
               <div className="pt-3 border-t border-black/10 dark:border-white/10 space-y-1.5">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-white/40">
+                <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-white/65">
                   Límites configurados
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(system.limits).map(([key, value]) => (
                     <span
                       key={key}
-                      className="text-[9px] font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60"
+                      className="text-xs font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60"
                     >
                       {key}={value}
                     </span>
@@ -461,7 +461,7 @@ export const AdministrationView: React.FC = () => {
             </div>
           ) : (
             !systemError && (
-              <p className="text-[11px] text-zinc-500 dark:text-white/45 flex items-center gap-1.5">
+              <p className="text-xs text-zinc-500 dark:text-white/65 flex items-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Consultando servicios…
               </p>
             )
@@ -474,7 +474,7 @@ export const AdministrationView: React.FC = () => {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
             <Lock className="w-4 h-4 text-zinc-600 dark:text-white/70" /> Matriz de Permisos RBAC por Módulo
           </h2>
-          <span className="text-xs text-zinc-500 dark:text-white/50">
+          <span className="text-xs text-zinc-500 dark:text-white/65">
             Rol efectivo de su sesión: <strong className="text-zinc-900 dark:text-white font-mono">{currentRole}</strong>
           </span>
         </div>
@@ -482,7 +482,7 @@ export const AdministrationView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-center text-xs">
             <thead>
-              <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+              <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                 <th className="pb-2.5 text-left font-medium">Módulo del Sistema</th>
                 <th className="pb-2.5 font-medium">ADMIN</th>
                 <th className="pb-2.5 font-medium">PROJECT_LEAD</th>
@@ -517,7 +517,7 @@ export const AdministrationView: React.FC = () => {
             <Clock className="w-4 h-4 text-zinc-600 dark:text-white/70" /> Registro de Auditoría del Proyecto
           </h2>
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-white/65 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Filtrar por acción, actor o metadata…"
@@ -546,7 +546,7 @@ export const AdministrationView: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <thead>
-                <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+                <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                   <th className="pb-2">Tiempo</th>
                   <th className="pb-2">Actor</th>
                   <th className="pb-2">Acción</th>
@@ -556,7 +556,7 @@ export const AdministrationView: React.FC = () => {
               <tbody className="divide-y divide-black/5 dark:divide-white/5">
                 {filteredAudit.map((event) => (
                   <tr key={event.id} className="hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
-                    <td className="py-2.5 text-zinc-500 dark:text-white/50 font-sans whitespace-nowrap">
+                    <td className="py-2.5 text-zinc-500 dark:text-white/65 font-sans whitespace-nowrap">
                       {formatDateTime(event.createdAt)}
                     </td>
                     <td className="py-2.5 text-zinc-700 dark:text-white/80">
@@ -583,7 +583,7 @@ export const AdministrationView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-zinc-400 dark:text-white/40 hover:text-zinc-900 dark:hover:text-white"
+                className="text-zinc-400 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -650,7 +650,7 @@ export const AdministrationView: React.FC = () => {
             </div>
 
             {createError && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
+              <p className="text-xs text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {createError}
               </p>
             )}
@@ -658,7 +658,7 @@ export const AdministrationView: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/50 hover:text-zinc-900 dark:hover:text-white"
+                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white"
               >
                 Cancelar
               </button>

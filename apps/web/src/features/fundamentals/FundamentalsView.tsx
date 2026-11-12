@@ -476,7 +476,7 @@ export const FundamentalsView: React.FC = () => {
     {
       id: 'FEEDFORWARD',
       title: 'Feedforward (MLP)',
-      tag: 'Semana 11',
+      tag: 'Tabular',
       desc: 'Flujo unidireccional sin ciclos. Adecuada para datos tabulares y clasificación estructurada.',
     },
     {
@@ -505,12 +505,12 @@ export const FundamentalsView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-black/10 dark:border-white/10">
         <div>
           <div className="flex items-center gap-2 text-zinc-600 dark:text-white/60 text-xs font-semibold uppercase tracking-wider">
-            <BookOpen className="w-4 h-4 text-zinc-800 dark:text-white/80" /> Módulo 03 • Fundamentos Neuronales (Semana 11)
+            <BookOpen className="w-4 h-4 text-zinc-800 dark:text-white/80" /> Módulo 03 • Fundamentos Neuronales
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Matemáticas y Estructura del Perceptrón
           </h1>
-          <p className="text-xs text-zinc-600 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-600 dark:text-white/65 mt-0.5">
             Operaciones de aprendizaje: entender la neurona artificial, sinapsis, sesgos y funciones de activación no lineales.
           </p>
         </div>
@@ -602,7 +602,7 @@ export const FundamentalsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-black/5 dark:border-white/5 text-[11px] text-zinc-500 dark:text-white/50 flex items-center justify-between">
+            <div className="pt-2 border-t border-black/5 dark:border-white/5 text-xs text-zinc-500 dark:text-white/65 flex items-center justify-between">
               <span>Combinación lineal: z = ({x1}&times;{w1}) + ({x2}&times;{w2}) + ({bias}) = <strong className="text-zinc-900 dark:text-white">{z}</strong></span>
               <span>Disparo: y = <strong className="text-zinc-900 dark:text-white">{y}</strong></span>
             </div>
@@ -614,11 +614,11 @@ export const FundamentalsView: React.FC = () => {
               <div key={fam.id} className="glass-card p-4 rounded-2xl glass-card-hover space-y-1">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold text-zinc-900 dark:text-white">{fam.title}</h3>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 font-mono">
+                  <span className="text-xs px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 font-mono">
                     {fam.tag}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-600 dark:text-white/50 leading-tight">{fam.desc}</p>
+                <p className="text-xs text-zinc-600 dark:text-white/65 leading-tight">{fam.desc}</p>
               </div>
             ))}
           </div>
@@ -626,7 +626,7 @@ export const FundamentalsView: React.FC = () => {
           {/* Interactive Checkpoint Quiz */}
           <div className="glass-card p-5 rounded-2xl space-y-3">
             <span className="text-xs font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Evaluación Rápida (Checkpoint S11)
+              <HelpCircle className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Evaluación rápida de conceptos
             </span>
 
             {quizQuestions.map((q) => {
@@ -651,7 +651,7 @@ export const FundamentalsView: React.FC = () => {
                           key={optIdx}
                           disabled={isAnswered}
                           onClick={() => handleSelectQuiz(q.id, optIdx)}
-                          className={`p-2.5 rounded-xl border text-left text-[11px] transition-colors ${btnStyle}`}
+                          className={`p-2.5 rounded-xl border text-left text-xs transition-colors ${btnStyle}`}
                         >
                           {opt}
                         </button>
@@ -659,7 +659,7 @@ export const FundamentalsView: React.FC = () => {
                     })}
                   </div>
                   {isAnswered && (
-                    <div className="text-[11px] text-zinc-500 dark:text-white/50 pt-1 border-t border-black/5 dark:border-white/5">
+                    <div className="text-xs text-zinc-500 dark:text-white/65 pt-1 border-t border-black/5 dark:border-white/5">
                       {q.explanation}
                     </div>
                   )}
@@ -671,9 +671,9 @@ export const FundamentalsView: React.FC = () => {
 
         {/* RIGHT DOCK: 2-Column Grid of 8 Telemetry Cards (fills empty space seamlessly) */}
         <div className="space-y-3">
-          <div className="text-xs font-medium text-zinc-600 dark:text-white/50 flex items-center justify-between px-1">
+          <div className="text-xs font-medium text-zinc-600 dark:text-white/65 flex items-center justify-between px-1">
             <span>Visualizaciones (Dock)</span>
-            <span className="text-[10px] text-zinc-800 dark:text-white/70">6 Gráficos interactivos · Clic para ampliar</span>
+            <span className="text-xs text-zinc-800 dark:text-white/70">6 Gráficos interactivos · Clic para ampliar</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -682,19 +682,19 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('neuron')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <Network className="w-3 h-3 text-rose-500" /> Grafo Sináptico
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-[9px] text-zinc-500 dark:text-white/60">z={z}</span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-rose-400 transition-colors" />
+                  <span className="font-mono text-xs text-zinc-500 dark:text-white/60">z={z}</span>
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-rose-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderNeuronSVG(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>Perceptrón artificial</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -705,19 +705,19 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('activation')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <TrendingUp className="w-3 h-3 text-rose-500" /> Curva f(z): {activationFn}
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-[9px] text-zinc-500 dark:text-white/60">y={y}</span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-rose-400 transition-colors" />
+                  <span className="font-mono text-xs text-zinc-500 dark:text-white/60">y={y}</span>
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-rose-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderActivationCurve(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>Plano cartesiano [-4, 4]</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -728,21 +728,21 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('boundary')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <Sliders className="w-3 h-3 text-rose-500" /> Frontera 2D
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className={`font-mono text-[9px] font-semibold ${z > 0 ? 'text-rose-400' : 'text-sky-400'}`}>
+                  <span className={`font-mono text-xs font-semibold ${z > 0 ? 'text-rose-400' : 'text-sky-400'}`}>
                     {z > 0 ? 'Clase 1' : 'Clase 0'}
                   </span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-rose-400 transition-colors" />
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-rose-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderDecisionBoundary(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>w1·x1 + w2·x2 + b = 0</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -753,19 +753,19 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('gradient')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <BookOpen className="w-3 h-3 text-sky-400" /> Gradiente f&apos;(z)
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-[9px] text-sky-400 font-semibold">f&apos;={grad}</span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-sky-400 transition-colors" />
+                  <span className="font-mono text-xs text-sky-400 font-semibold">f&apos;={grad}</span>
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-sky-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderGradientCurve(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>{activationFn === 'sigmoid' ? 'Máx 0.25 (Vanishing)' : activationFn === 'relu' && z <= 0 ? "f'=0 (Dying ReLU)" : 'Retropropagación'}</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -776,19 +776,19 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('contribution')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <Layers className="w-3 h-3 text-amber-500" /> Aportes Sinápticos
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-[9px] text-zinc-500 dark:text-white/60">z={z}</span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-amber-400 transition-colors" />
+                  <span className="font-mono text-xs text-zinc-500 dark:text-white/60">z={z}</span>
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-amber-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderContributionBars(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>Pesos w1, w2 y sesgo b</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -799,19 +799,19 @@ export const FundamentalsView: React.FC = () => {
               onClick={() => setEnlargedModal('loss')}
               className="glass-card p-2.5 rounded-lg border border-black/10 dark:border-rose-500/20 glass-card-hover cursor-pointer space-y-1.5 shadow-sm"
             >
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-zinc-900 dark:text-white flex items-center gap-1">
                   <TrendingUp className="w-3 h-3 text-rose-500" /> Función de Coste
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-[9px] text-zinc-500 dark:text-white/60">J(w)</span>
-                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/40 hover:text-rose-400 transition-colors" />
+                  <span className="font-mono text-xs text-zinc-500 dark:text-white/60">J(w)</span>
+                  <Maximize2 className="w-2.5 h-2.5 text-zinc-400 dark:text-white/65 hover:text-rose-400 transition-colors" />
                 </div>
               </div>
               <div className="p-1 glass-inset rounded-md flex items-center justify-center">
                 {renderLossSurface(false)}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 px-0.5">
+              <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-white/65 px-0.5">
                 <span>Descenso de gradiente</span>
                 <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar &rarr;</span>
               </div>
@@ -851,7 +851,7 @@ export const FundamentalsView: React.FC = () => {
             ? 'Contribución neta de cada peso w_i·x_i y sesgo b que conforman el potencial z'
             : 'Curva cuadrática de error mostrando la dirección de optimización hacia el mínimo global'
         }
-        badge="Fundamentos Semana 11"
+        badge="Fundamentos neuronales"
       >
         <div className="space-y-4">
           <div className="p-6 glass-inset rounded-2xl border border-black/10 dark:border-white/10 flex justify-center">

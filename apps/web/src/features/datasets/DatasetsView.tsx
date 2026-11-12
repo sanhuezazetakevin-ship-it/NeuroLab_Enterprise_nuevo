@@ -16,8 +16,14 @@ import {
 import { useApp } from '../../lib/AppContext';
 import { ApiClient } from '../../lib/api';
 import { Dataset, DatasetPreview } from '../../types';
+import type { GuidedTarget, NavigateFn } from '../../lib/guidedFlow';
 import { EnlargedChartModal } from '../../components/common/EnlargedChartModal';
-import { EmptyBlock, ErrorBlock, LoadingBlock, ProjectRequired } from '../../components/common/ProjectGuard';
+import {
+  EmptyBlock,
+  ErrorBlock,
+  LoadingBlock,
+  ProjectRequiredPage,
+} from '../../components/common/ProjectGuard';
 import { formatBytes, formatDate, formatNumber, shortId } from '../../lib/format';
 
 const WRITE_ROLES = ['ADMIN', 'PROJECT_LEAD', 'AI_ENGINEER'];
@@ -43,7 +49,17 @@ async function readCsvHeaders(file: File): Promise<string[]> {
     .filter((value) => value.length > 0);
 }
 
-export const DatasetsView: React.FC = () => {
+interface DatasetsViewProps {
+  onNavigate?: NavigateFn;
+  guided?: GuidedTarget | null;
+  onGuidedConsumed?: (id: number) => void;
+}
+
+export const DatasetsView: React.FC<DatasetsViewProps> = ({
+  onNavigate,
+  guided,
+  onGuidedConsumed,
+}) => {
   const { activeProject, showToast, currentRole } = useApp();
   const projectId = activeProject?.id;
   const canWrite = WRITE_ROLES.includes(currentRole);
@@ -82,7 +98,7 @@ export const DatasetsView: React.FC = () => {
         return list[0]?.id ?? null;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible cargar los datasets');
+      setError(err instanceof Error ? err.message : 'No fue posible cargar los conjuntos de datos');
     } finally {
       setLoading(false);
     }
@@ -128,6 +144,20 @@ export const DatasetsView: React.FC = () => {
     setUploadError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Flujo guiado: al llegar desde la creación del proyecto se abre el modal de
+  // carga, de modo que el usuario no tenga que buscar el botón.
+  useEffect(() => {
+    if (!guided?.openUpload) return;
+    if (!projectId || !canWrite) {
+      onGuidedConsumed?.(guided.id);
+      return;
+    }
+    resetUploadForm();
+    setShowUploadModal(true);
+    onGuidedConsumed?.(guided.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guided?.id, projectId, canWrite]);
 
   const handleFileSelected = async (file: File | null) => {
     setUploadFile(file);
@@ -175,9 +205,13 @@ export const DatasetsView: React.FC = () => {
       setSelectedId(created.id);
       setShowUploadModal(false);
       resetUploadForm();
-      showToast(`Dataset "${created.name}" validado y registrado`, 'success');
+      showToast(
+        `Conjunto de datos "${created.name}" validado y registrado. Ahora diseñe la arquitectura.`,
+        'success',
+      );
+      onNavigate?.('architectures', { datasetId: created.id });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'No fue posible cargar el dataset');
+      setUploadError(err instanceof Error ? err.message : 'No fue posible cargar el conjunto de datos');
     } finally {
       setUploading(false);
     }
@@ -185,15 +219,15 @@ export const DatasetsView: React.FC = () => {
 
   const handleDelete = async (dataset: Dataset) => {
     if (!projectId) return;
-    if (!window.confirm(`¿Eliminar el dataset "${dataset.name}"? Esta acción no se puede deshacer.`)) {
+    if (!window.confirm(`¿Eliminar el conjunto de datos "${dataset.name}"? Esta acción no se puede deshacer.`)) {
       return;
     }
     try {
       await ApiClient.deleteDataset(projectId, dataset.id);
-      showToast('Dataset eliminado', 'success');
+      showToast('Conjunto de datos eliminado', 'success');
       await loadDatasets();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No fue posible eliminar el dataset', 'error');
+      showToast(err instanceof Error ? err.message : 'No fue posible eliminar el conjunto de datos', 'error');
     }
   };
 
@@ -212,14 +246,14 @@ export const DatasetsView: React.FC = () => {
   const renderTable = () => {
     if (previewLoading) {
       return (
-        <div className="h-40 flex items-center justify-center gap-2 text-[11px] text-zinc-500 dark:text-white/45">
+        <div className="h-40 flex items-center justify-center gap-2 text-xs text-zinc-500 dark:text-white/65">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando vista previa…
         </div>
       );
     }
     if (!rows.length) {
       return (
-        <div className="h-40 flex items-center justify-center text-[11px] text-zinc-500 dark:text-white/45">
+        <div className="h-40 flex items-center justify-center text-xs text-zinc-500 dark:text-white/65">
           Sin vista previa disponible.
         </div>
       );
@@ -227,18 +261,18 @@ export const DatasetsView: React.FC = () => {
     return (
       <table className="w-full text-left text-xs font-mono">
         <thead>
-          <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40 font-sans">
+          <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65 font-sans">
             {columns.map((column) => (
               <th key={column} className="pb-2.5 px-3 font-medium whitespace-nowrap">
                 <div className="flex items-center gap-1.5">
                   {column}
                   {column === targetColumn && (
-                    <span className="text-[8px] uppercase px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/15 text-zinc-700 dark:text-white/80">
+                    <span className="text-xs uppercase px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/15 text-zinc-700 dark:text-white/80">
                       target
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] text-zinc-400 dark:text-white/30 uppercase font-normal">
+                <span className="text-xs text-zinc-400 dark:text-white/30 uppercase font-normal">
                   {preview?.dtypes?.[column] || selected?.metadata.dtypes?.[column] || ''}
                 </span>
               </th>
@@ -253,7 +287,7 @@ export const DatasetsView: React.FC = () => {
                 return (
                   <td key={column} className="py-2.5 px-3 whitespace-nowrap">
                     {column === targetColumn ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold glass-inset text-zinc-900 dark:text-white border border-black/15 dark:border-white/15">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold glass-inset text-zinc-900 dark:text-white border border-black/15 dark:border-white/15">
                         {value == null ? '—' : String(value)}
                       </span>
                     ) : (
@@ -270,7 +304,15 @@ export const DatasetsView: React.FC = () => {
   };
 
   if (!activeProject) {
-    return <ProjectRequired action="Seleccione un proyecto para gestionar sus datasets." />;
+    return (
+      <ProjectRequiredPage
+        icon={Database}
+        eyebrow="Módulo 05 • Conjuntos de datos y particiones"
+        title="Gestión y Validación de Datos"
+        description="CSV validado en servidor, checksum SHA-256 y partición determinista 70 / 15 / 15."
+        action="Seleccione un proyecto para gestionar sus conjuntos de datos."
+      />
+    );
   }
 
   return (
@@ -278,12 +320,12 @@ export const DatasetsView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-black/10 dark:border-white/10">
         <div>
           <div className="flex items-center gap-2 text-zinc-600 dark:text-white/60 text-xs font-semibold uppercase tracking-wider">
-            <Database className="w-4 h-4 text-zinc-700 dark:text-white/80" /> Módulo 05 • Datasets & Particiones
+            <Database className="w-4 h-4 text-zinc-700 dark:text-white/80" /> Módulo 05 • Conjuntos de datos y particiones
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Gestión y Validación de Datos
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
             CSV validado en servidor, checksum SHA-256 y partición determinista 70 / 15 / 15.
           </p>
         </div>
@@ -301,25 +343,25 @@ export const DatasetsView: React.FC = () => {
               setShowUploadModal(true);
             }}
             disabled={!canWrite}
-            title={canWrite ? undefined : 'Su rol no permite cargar datasets'}
+            title={canWrite ? undefined : 'Su rol no permite cargar conjuntos de datos'}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold ${
               canWrite ? 'glass-btn-primary' : 'glass-btn-secondary opacity-40 cursor-not-allowed'
             }`}
           >
-            <Upload className="w-4 h-4" /> Cargar Dataset
+            <Upload className="w-4 h-4" /> Cargar conjunto de datos
           </button>
         </div>
       </div>
 
-      {loading && datasets.length === 0 && <LoadingBlock label="Cargando datasets del proyecto…" />}
+      {loading && datasets.length === 0 && <LoadingBlock label="Cargando conjuntos de datos del proyecto…" />}
 
       {error && <ErrorBlock message={error} onRetry={loadDatasets} />}
 
       {!loading && !error && datasets.length === 0 && (
         <div className="glass-card rounded-2xl p-10 flex flex-col items-center text-center gap-2">
-          <Database className="w-6 h-6 text-zinc-400 dark:text-white/40" />
-          <p className="text-sm font-semibold text-zinc-900 dark:text-white">Este proyecto aún no tiene datasets</p>
-          <p className="text-xs text-zinc-500 dark:text-white/50 max-w-md">
+          <Database className="w-6 h-6 text-zinc-400 dark:text-white/65" />
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">Este proyecto aún no tiene conjuntos de datos</p>
+          <p className="text-xs text-zinc-500 dark:text-white/65 max-w-md">
             Cargue un CSV con encabezados explícitos e indique la columna objetivo para habilitar el
             entrenamiento.
           </p>
@@ -331,7 +373,7 @@ export const DatasetsView: React.FC = () => {
               }}
               className="mt-2 flex items-center gap-2 px-4 py-2.5 rounded-xl glass-btn-primary text-xs font-semibold"
             >
-              <Upload className="w-4 h-4" /> Cargar primer dataset
+              <Upload className="w-4 h-4" /> Cargar primer conjunto de datos
             </button>
           )}
         </div>
@@ -353,16 +395,16 @@ export const DatasetsView: React.FC = () => {
                           <h3 className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
                             {selected.name}
                           </h3>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 font-mono">
+                          <span className="text-xs px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 font-mono">
                             {selected.version}
                           </span>
                           {selected.verified && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center gap-1">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" /> Verificado
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-500 dark:text-white/40 font-mono mt-0.5 truncate">
+                        <p className="text-xs text-zinc-500 dark:text-white/65 font-mono mt-0.5 truncate">
                           {selected.originalFilename || selected.storageKey}
                         </p>
                       </div>
@@ -371,8 +413,8 @@ export const DatasetsView: React.FC = () => {
                     {canWrite && (
                       <button
                         onClick={() => handleDelete(selected)}
-                        className="p-2 rounded-xl text-zinc-400 dark:text-white/40 hover:text-rose-500 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                        title="Eliminar dataset"
+                        className="p-2 rounded-xl text-zinc-400 dark:text-white/65 hover:text-rose-500 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+                        title="Eliminar conjunto de datos"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -381,7 +423,7 @@ export const DatasetsView: React.FC = () => {
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs border-t border-black/10 dark:border-white/10">
                     <div>
-                      <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">
+                      <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                         Muestras
                       </span>
                       <p className="font-semibold text-zinc-900 dark:text-white font-mono mt-0.5">
@@ -389,7 +431,7 @@ export const DatasetsView: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">
+                      <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                         Features
                       </span>
                       <p className="font-semibold text-zinc-900 dark:text-white font-mono mt-0.5">
@@ -397,7 +439,7 @@ export const DatasetsView: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">
+                      <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                         Tamaño
                       </span>
                       <p className="font-semibold text-zinc-900 dark:text-white font-mono mt-0.5">
@@ -405,7 +447,7 @@ export const DatasetsView: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">
+                      <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                         Columna objetivo
                       </span>
                       <p className="font-semibold text-zinc-900 dark:text-white font-mono mt-0.5 truncate">
@@ -414,7 +456,7 @@ export const DatasetsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-600 dark:text-white/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-zinc-600 dark:text-white/60">
                     <div className="p-2.5 rounded-xl glass-inset border border-black/10 dark:border-white/10 flex items-center justify-between gap-2">
                       <span>Tarea inferida</span>
                       <span className="font-mono font-semibold text-zinc-900 dark:text-white">
@@ -429,8 +471,8 @@ export const DatasetsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-xl glass-inset border border-black/10 dark:border-white/10 text-[10px] flex items-center gap-2 overflow-hidden">
-                    <span className="uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0">
+                  <div className="p-2.5 rounded-xl glass-inset border border-black/10 dark:border-white/10 text-xs flex items-center gap-2 overflow-hidden">
+                    <span className="uppercase font-bold text-zinc-500 dark:text-white/65 tracking-wider shrink-0">
                       SHA-256
                     </span>
                     <code className="font-mono text-zinc-800 dark:text-white/80 truncate">
@@ -459,7 +501,7 @@ export const DatasetsView: React.FC = () => {
                 </div>
               </>
             ) : (
-              <EmptyBlock title="Seleccione un dataset" description="Elija un dataset del panel derecho." icon={Database} />
+              <EmptyBlock title="Seleccione un conjunto de datos" description="Elija un conjunto de datos del panel derecho." icon={Database} />
             )}
           </div>
 
@@ -467,9 +509,9 @@ export const DatasetsView: React.FC = () => {
             <div className="glass-card p-4 rounded-2xl space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-zinc-900 dark:text-white/90 flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Datasets ({datasets.length})
+                  <Database className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Conjuntos de datos ({datasets.length})
                 </span>
-                <span className="text-[10px] text-zinc-500 dark:text-white/40">Proyecto activo</span>
+                <span className="text-xs text-zinc-500 dark:text-white/65">Proyecto activo</span>
               </div>
               <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                 {datasets.map((dataset) => (
@@ -484,12 +526,12 @@ export const DatasetsView: React.FC = () => {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-zinc-900 dark:text-white truncate">{dataset.name}</span>
-                      <span className="text-[9px] font-mono text-zinc-500 dark:text-white/40 shrink-0">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-white/65 shrink-0">
                         {dataset.version}
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-500 dark:text-white/45">
-                      {formatNumber(dataset.metadata.samples)} filas · {dataset.metadata.task || 'sin task'}
+                    <span className="text-xs text-zinc-500 dark:text-white/65">
+                      {formatNumber(dataset.metadata.samples)} filas · {dataset.metadata.task || 'sin tarea'}
                     </span>
                   </button>
                 ))}
@@ -501,7 +543,7 @@ export const DatasetsView: React.FC = () => {
                 <span className="font-semibold text-zinc-900 dark:text-white/90 flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Partición determinista
                 </span>
-                <span className="font-mono text-[10px] text-zinc-600 dark:text-white/70">
+                <span className="font-mono text-xs text-zinc-600 dark:text-white/70">
                   {Math.round(split.train * 100)} / {Math.round(split.val * 100)} / {Math.round(split.test * 100)}
                 </span>
               </div>
@@ -517,7 +559,7 @@ export const DatasetsView: React.FC = () => {
                 { label: 'Validation', value: split.val, tone: 'bg-zinc-500 dark:bg-white/60' },
                 { label: 'Test', value: split.test, tone: 'bg-zinc-300 dark:bg-white/30' },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between text-[11px] text-zinc-600 dark:text-white/60">
+                <div key={item.label} className="flex items-center justify-between text-xs text-zinc-600 dark:text-white/60">
                   <span className="flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full ${item.tone}`} /> {item.label}
                   </span>
@@ -528,14 +570,14 @@ export const DatasetsView: React.FC = () => {
                 </div>
               ))}
 
-              <p className="text-[10px] text-zinc-500 dark:text-white/40 leading-relaxed">
+              <p className="text-xs text-zinc-500 dark:text-white/65 leading-relaxed">
                 La partición es fija y determinista; el worker aplica imputación y escalado solo con
                 el conjunto de entrenamiento para evitar fuga de datos.
               </p>
             </div>
 
             {selected && preview && (
-              <div className="glass-card p-4 rounded-2xl space-y-1.5 text-[11px] text-zinc-600 dark:text-white/60">
+              <div className="glass-card p-4 rounded-2xl space-y-1.5 text-xs text-zinc-600 dark:text-white/60">
                 <div className="flex justify-between">
                   <span>Filas leídas</span>
                   <span className="font-mono text-zinc-900 dark:text-white">{formatNumber(preview.totalRows)}</span>
@@ -557,7 +599,7 @@ export const DatasetsView: React.FC = () => {
       <EnlargedChartModal
         isOpen={enlargedOpen}
         onClose={() => setEnlargedOpen(false)}
-        title={`Inspección del Dataset: ${selected?.name || ''}`}
+        title={`Inspección del conjunto de datos: ${selected?.name || ''}`}
         subtitle="Vista tabular de variables y columna objetivo"
         badge={`${formatNumber(preview?.totalRows ?? selected?.metadata.samples)} muestras`}
       >
@@ -565,7 +607,7 @@ export const DatasetsView: React.FC = () => {
           <div className="glass-inset rounded-2xl p-4 overflow-x-auto border border-black/10 dark:border-white/10">
             {renderTable()}
           </div>
-          <p className="text-xs text-zinc-500 dark:text-white/50">
+          <p className="text-xs text-zinc-500 dark:text-white/65">
             La vista previa se genera en el servidor a partir del archivo almacenado; no se
             reconstruyen datos en el navegador.
           </p>
@@ -576,10 +618,10 @@ export const DatasetsView: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="glass-panel border border-black/15 dark:border-white/15 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-glass animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Cargar Nuevo Dataset</h3>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Cargar nuevo conjunto de datos</h3>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="text-zinc-400 dark:text-white/40 hover:text-zinc-900 dark:hover:text-white"
+                className="text-zinc-400 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -587,7 +629,7 @@ export const DatasetsView: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-zinc-600 dark:text-white/60 mb-1.5">
-                Nombre del Dataset
+                Nombre del conjunto de datos
               </label>
               <input
                 type="text"
@@ -611,11 +653,11 @@ export const DatasetsView: React.FC = () => {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-black/20 dark:border-white/20 rounded-2xl p-5 text-center text-xs text-zinc-500 dark:text-white/50 space-y-1.5 hover:border-black/40 dark:hover:border-white/40 transition-colors"
+                className="w-full border-2 border-dashed border-black/20 dark:border-white/20 rounded-2xl p-5 text-center text-xs text-zinc-500 dark:text-white/65 space-y-1.5 hover:border-black/40 dark:hover:border-white/40 transition-colors"
               >
                 <Upload className="w-5 h-5 mx-auto text-zinc-600 dark:text-white/60" />
                 <p>{uploadFile ? uploadFile.name : 'Seleccione un archivo CSV'}</p>
-                <span className="text-[10px] text-zinc-400 dark:text-white/40 font-mono">
+                <span className="text-xs text-zinc-400 dark:text-white/65 font-mono">
                   {uploadFile ? formatBytes(uploadFile.size) : 'Máximo permitido por el servidor'}
                 </span>
               </button>
@@ -647,13 +689,13 @@ export const DatasetsView: React.FC = () => {
                   className="w-full glass-input rounded-xl px-3 py-2 text-xs font-mono"
                 />
               )}
-              <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-1">
+              <p className="text-xs text-zinc-500 dark:text-white/65 mt-1">
                 Obligatoria para inferir la tarea y habilitar entrenamientos.
               </p>
             </div>
 
             {uploadError && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
+              <p className="text-xs text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {uploadError}
               </p>
             )}
@@ -661,7 +703,7 @@ export const DatasetsView: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/50 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
                 Cancelar
               </button>

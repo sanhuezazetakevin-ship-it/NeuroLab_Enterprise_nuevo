@@ -1,4 +1,5 @@
 import logging
+import secrets
 
 from sqlalchemy import select
 
@@ -20,16 +21,28 @@ async def ensure_seed_admin() -> None:
         existing = await db.scalar(select(UserModel).limit(1))
         if existing:
             return
+        password = settings.SEED_ADMIN_PASSWORD
+        generated = not password
+        if generated:
+            password = secrets.token_urlsafe(12)
         admin = UserModel(
             email=settings.SEED_ADMIN_EMAIL.lower(),
-            password_hash=get_password_hash(settings.SEED_ADMIN_PASSWORD),
+            password_hash=get_password_hash(password),
             display_name=settings.SEED_ADMIN_NAME,
             role="ADMIN",
             status="ACTIVE",
         )
         db.add(admin)
         await db.commit()
-        logger.warning(
-            "Usuario administrador inicial creado: %s. Cambie la contraseña en el primer acceso.",
-            admin.email,
-        )
+        if generated:
+            logger.warning(
+                "Usuario administrador inicial creado: %s. Contraseña generada: %s "
+                "(cópiela ahora; no se volverá a mostrar). Cambie la contraseña en el primer acceso.",
+                admin.email,
+                password,
+            )
+        else:
+            logger.warning(
+                "Usuario administrador inicial creado: %s. Cambie la contraseña en el primer acceso.",
+                admin.email,
+            )

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroLab Enterprise · Validación en vivo para exposición</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 36px 24px 80px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at 12% 8%, #1f1017 0%, #0a0a0d 55%, #07080c 100%);
+      color: #f8fafc; line-height: 1.55;
+    }
+    header, main { max-width: 1180px; margin: 0 auto; }
+    h1 { font-size: 27px; margin: 0 0 10px; letter-spacing: -0.02em; }
+    .lead { margin: 0; color: rgba(241,245,249,0.7); font-size: 14px; max-width: 940px; }
+    code { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: #fda4af; }
+    .badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .badge { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color: rgba(241,245,249,0.88); }
+    .badge.ok { color: #6ee7b7; background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.35); }
+    .badge.brand { color: #fda4af; background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.35); }
+    .badge.warn { color: #fcd34d; background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); }
+
+    .checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 24px 0 8px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+      background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); font-size: 13px; }
+    .check .tick { color: #6ee7b7; font-weight: 800; }
+    .check b { color: #fff; }
+
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0; }
+    .metric { padding: 13px 15px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); }
+    .metric .label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(241,245,249,0.5); }
+    .metric .value { font-size: 21px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+    .timeline { border-radius: 16px; padding: 18px 20px; margin: 24px 0; background: rgba(255,255,255,0.028); border: 1px solid rgba(255,255,255,0.08); }
+    .timeline h2 { margin: 0 0 12px; font-size: 16px; }
+    .tl { display: grid; gap: 9px; }
+    .tl div { display: grid; grid-template-columns: 92px 1fr; gap: 12px; font-size: 13px; }
+    .tl time { color: rgba(241,245,249,0.5); font-variant-numeric: tabular-nums; font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; padding-top: 2px; }
+    .tl .ok { color: #6ee7b7; }
+
+    .tour { display: grid; gap: 28px; margin-top: 30px; }
+    .point { border-radius: 18px; padding: 18px; background: rgba(255,255,255,0.028); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 44px rgba(0,0,0,0.35); }
+    .point-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .num { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+      background: linear-gradient(140deg, #e11d48, #9f1239); box-shadow: 0 0 0 1px rgba(255,255,255,0.14); }
+    .point h3 { font-size: 16px; margin: 0; }
+    .point .path { margin-left: auto; font-size: 11px; color: rgba(241,245,249,0.45); font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+    .point p { margin: 0 0 12px; font-size: 13px; color: rgba(241,245,249,0.72); }
+    .frame { border-radius: 14px; overflow: hidden; border: 1px solid rgba(244,63,94,0.2); box-shadow: 0 18px 44px rgba(0,0,0,0.45); background: #0c0d13; }
+    .frame img { display: block; width: 100%; height: auto; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 12.5px; }
+    th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    th { color: rgba(241,245,249,0.5); font-weight: 600; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+    td.num { font-variant-numeric: tabular-nums; }
+    .ok { color: #6ee7b7; } .warn { color: #fcd34d; }
+    .callout { border-radius: 12px; padding: 13px 15px; font-size: 12.5px; margin-top: 12px;
+      border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.07); color: rgba(209,250,229,0.92); }
+    .callout.warn { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.07); color: rgba(254,243,199,0.92); }
+    .callout strong { color: #fff; }
+    .present { border-radius: 16px; padding: 18px 20px; margin-top: 30px; background: rgba(225,29,72,0.06); border: 1px solid rgba(225,29,72,0.25); }
+    .present h2 { margin: 0 0 10px; font-size: 16px; }
+    .present ol { margin: 0; padding-left: 20px; font-size: 13px; color: rgba(241,245,249,0.78); }
+    .present li { margin-bottom: 6px; }
+    footer { max-width: 1180px; margin: 44px auto 0; font-size: 12px; color: rgba(241,245,249,0.45); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Validación en vivo · NeuroLab Enterprise listo para presentar</h1>
+    <p class="lead">
+      Esta página resume una ejecución real hecha ahora mismo: abrí la aplicación, inicié sesión, lancé un
+      entrenamiento nuevo desde la interfaz, lo procesé con el worker de TensorFlow, revisé la evaluación,
+      aprobé la versión y ejecuté una predicción. Las capturas y los números salen de la instancia
+      <code>127.0.0.1:5183</code> con API <code>127.0.0.1:8010</code>.
+    </p>
+    <div class="badges">
+      <span class="badge ok">API healthy</span>
+      <span class="badge ok">Job bb7cb44f · COMPLETED</span>
+      <span class="badge ok">Modelo v1.2 · APPROVED</span>
+      <span class="badge brand">Predicción real 94,3 %</span>
+      <a class="badge" href="guia-de-pruebas.html" style="text-decoration:none">Guía de pruebas interactiva ↗</a>
+    </div>
+
+    <div class="checklist">
+      <div class="check"><span class="tick">✓</span><span><b>Login y roles:</b> autenticación JWT, proyecto y rol Administrador.</span></div>
+      <div class="check"><span class="tick">✓</span><span><b>Datos reales:</b> 600 filas, 9 características, checksum verificado.</span></div>
+      <div class="check"><span class="tick">✓</span><span><b>Entrenamiento:</b> job creado desde la UI y procesado por el worker.</span></div>
+      <div class="check"><span class="tick">✓</span><span><b>Evaluación:</b> métricas sobre 90 muestras de prueba no vistas.</span></div>
+      <div class="check"><span class="tick">✓</span><span><b>Gobernanza:</b> DRAFT → REVIEWED → APPROVED con auditoría.</span></div>
+      <div class="check"><span class="tick">✓</span><span><b>Consumo:</b> predicción individual real contra el modelo aprobado.</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="metrics">
+      <div class="metric"><div class="label">Job en vivo</div><div class="value">bb7cb44f</div></div>
+      <div class="metric"><div class="label">Épocas</div><div class="value">20 / 20</div></div>
+      <div class="metric"><div class="label">Duración</div><div class="value">8,3 s</div></div>
+      <div class="metric"><div class="label">Accuracy test</div><div class="value ok">84,4 %</div></div>
+      <div class="metric"><div class="label">F1</div><div class="value">0,7667</div></div>
+      <div class="metric"><div class="label">ROC-AUC</div><div class="value ok">0,8917</div></div>
+    </div>
+
+    <div class="timeline">
+      <h2>Lo que ocurrió durante esta validación</h2>
+      <div class="tl">
+        <div><time>01:07</time><span>Se creó el job <code>bb7cb44f</code> desde la interfaz: 20 épocas, Adam, batch 32.</span></div>
+        <div><time>01:07</time><span>El worker reclamó el trabajo y pasó de <b>QUEUED</b> a <b>PREPARING</b>.</span></div>
+        <div><time>01:08</time><span class="ok">Entrenamiento COMPLETED: 20 épocas en 8,3 s; artefactos y ficha generados.</span></div>
+        <div><time>01:08</time><span>Se registró <b>v1.2</b> en estado <b>DRAFT</b> con SHA-256 <code>1f125222…</code>.</span></div>
+        <div><time>01:09</time><span>Evaluación revisada: accuracy 84,4 %, F1 0,7667, ROC-AUC 0,8917.</span></div>
+        <div><time>01:09</time><span>Transición <b>DRAFT → REVIEWED</b> desde el registro.</span></div>
+        <div><time>01:10</time><span class="ok">Transición <b>REVIEWED → APPROVED</b>; auditoría registrada.</span></div>
+        <div><time>01:12</time><span>Predicción real con v1.2: perfil 60 años / 90 meses / 6 productos → <b>94,3 %</b> de abandono.</span></div>
+      </div>
+    </div>
+
+    <div class="tour">
+      <section class="point">
+        <div class="point-head"><div class="num">1</div><h3>Panel general</h3><span class="path">/panel</span></div>
+        <p>Resumen del proyecto y navegación agrupada por flujo. Ahora aparecen <b>3 entrenamientos completados</b> y <b>3 versiones de modelo</b>.</p>
+        <div class="frame"><img src="tour-01-panel.jpeg" alt="Panel general con los datos de la validación" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">2</div><h3>Conjunto de datos</h3><span class="path">/datasets</span></div>
+        <p>Dataset verificado una sola vez: 600 filas, 9 características y checksum reproducible.</p>
+        <div class="frame"><img src="tour-02-dataset.jpeg" alt="Conjunto de datos verificado" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">3</div><h3>Arquitectura</h3><span class="path">/architectures</span></div>
+        <p>MLP 64-32-16 con dropout y salida sigmoide; 3 265 parámetros. La arquitectura se versiona antes de entrenar.</p>
+        <div class="frame"><img src="tour-03-arquitectura.jpeg" alt="Diseñador de redes" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">4</div><h3>Entrenamiento en vivo</h3><span class="path">/training</span></div>
+        <p>El trabajo nuevo <code>bb7cb44f</code> terminó en <b>20/20 épocas</b>. Métricas finales: pérdida 0,3880 · exactitud 80,5 % · pérdida val. 0,4829 · exactitud val. 78,9 %.</p>
+        <div class="frame"><img src="tour-04-entrenamiento.jpeg" alt="Entrenamiento nuevo completado" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">5</div><h3>Evaluación</h3><span class="path">/evaluation</span></div>
+        <p>Evaluación automática de <b>v1.2</b> sobre 90 muestras reservadas. Matriz de confusión: 53 y 23 aciertos, 12 y 2 errores; total 76 aciertos y 14 errores.</p>
+        <table>
+          <thead><tr><th>Métrica</th><th>Valor</th><th>Lectura</th></tr></thead>
+          <tbody>
+            <tr><td>Accuracy</td><td class="num ok">84,4 %</td><td>90 muestras de prueba</td></tr>
+            <tr><td>Precisión</td><td class="num">0,6571</td><td>Clase positiva</td></tr>
+            <tr><td>Recall</td><td class="num ok">0,9200</td><td>Detecta 92 % de abandonos</td></tr>
+            <tr><td>F1</td><td class="num">0,7667</td><td>Media armónica</td></tr>
+            <tr><td>ROC-AUC</td><td class="num ok">0,8917</td><td>Separación de clases</td></tr>
+          </tbody>
+        </table>
+        <div class="frame"><img src="tour-05-evaluacion.jpeg" alt="Evaluación y matriz de confusión de v1.2" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">6</div><h3>Registro y aprobación</h3><span class="path">/model-registry</span></div>
+        <p>La versión nació en <b>DRAFT</b>, pasó a <b>REVIEWED</b> y luego a <b>APPROVED</b>. Cada transición generó un evento de auditoría y un toast de confirmación.</p>
+        <div class="frame"><img src="tour-06-registro.jpeg" alt="Registro con v1.2 aprobada" /></div>
+        <div class="callout">
+          <strong>Auditoría real:</strong> <code>MODEL_REVIEWED</code> a las 01:09 y <code>MODEL_APPROVED</code> a las 01:10,
+          actor «Administrador NeuroLab». El checksum del artefacto quedó fijado en <code>1f125222…</code>.
+        </div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">7</div><h3>Ficha técnica</h3><span class="path">/reports</span></div>
+        <p>La ficha de auditoría de <b>v1.2</b> consolida topología, métricas persistidas, hiperparámetros y la pista de auditoría. Incluye el job de origen y el SHA-256 del artefacto.</p>
+        <div class="frame"><img src="tour-07-ficha-tecnica.jpeg" alt="Ficha técnica de v1.2" /></div>
+      </section>
+
+      <section class="point">
+        <div class="point-head"><div class="num">8</div><h3>Administración</h3><span class="path">/administration</span></div>
+        <p>Usuarios, roles y estado de la plataforma. Esta sección solo aparece para el rol ADMIN, lo que demuestra el control de acceso en la navegación.</p>
+        <div class="frame"><img src="tour-08-administracion.jpeg" alt="Administración de usuarios" /></div>
+      </section>
+    </div>
+
+    <div class="callout warn">
+      <strong>Nota honesta sobre el caso de estudio:</strong> el CSV es sintético y en estos datos el abandono
+      correlaciona con mayor antigüedad y más productos. Por eso el perfil de 60 años / 90 meses / 6 productos
+      obtiene 94,3 % y el de 23 años / 2 meses / 1 producto obtiene 0,0 %. El modelo refleja el dataset, no una
+      regla real de negocio. Si tu profesor pregunta, es una buena demostración de por qué el sistema compara
+      contra baselines y publica limitaciones.
+    </div>
+
+    <div class="present">
+      <h2>Cómo presentarlo en 5 minutos</h2>
+      <ol>
+        <li><b>Arranque:</b> <code>powershell -ExecutionPolicy Bypass -File scripts/start_demo.ps1 -Fresh</code> (deja la base demo lista con un entrenamiento real).</li>
+        <li><b>Durante la exposición:</b> muestra el panel, el dataset y la arquitectura; luego entra a Entrenamientos y lanza un job nuevo.</li>
+        <li><b>Worker:</b> en esta demo se ejecuta con <code>python workers\training\worker.py --once --job-id &lt;uuid&gt;</code>. En producción corre como servicio continuo; si tu profesor pregunta, dilo así.</li>
+        <li><b>Cierre:</b> evaluación → registro (DRAFT → REVIEWED → APPROVED) → ficha técnica → una predicción real.</li>
+        <li><b>Mensaje final:</b> el sistema no oculta resultados adversos: compara con baselines y declara limitaciones en la ficha.</li>
+      </ol>
+    </div>
+  </main>
+
+  <footer>
+    Validación ejecutada el 9 de noviembre de 2026 · instancia aislada <code>%TEMP%\neurolab_demo</code> ·
+    Python 3.13.6 · TensorFlow 2.21.0 · no modifica la base de datos principal.
+  </footer>
+</body>
+</html>

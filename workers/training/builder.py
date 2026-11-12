@@ -47,6 +47,22 @@ class KerasModelBuilder:
                 "Familias soportadas: FEEDFORWARD, RNN, CNN."
             )
 
+        declared_shape = config.get("input_shape")
+        if declared_shape:
+            try:
+                declared_dims = [int(dimension) for dimension in declared_shape]
+            except (TypeError, ValueError) as exc:
+                raise ModelBuildError(
+                    "El input_shape debe ser una lista de dimensiones numéricas"
+                ) from exc
+            if any(dimension <= 0 for dimension in declared_dims):
+                raise ModelBuildError("El input_shape debe contener dimensiones positivas")
+            if declared_dims[0] != int(input_dim):
+                raise ModelBuildError(
+                    f"El input_shape declarado {declared_dims} no coincide con las "
+                    f"{input_dim} características del dataset tras el preprocesamiento"
+                )
+
         raw_seed = hyperparameters.get("random_seed")
         seed = 42 if raw_seed is None else int(raw_seed)
         tf.keras.utils.set_random_seed(seed)
@@ -94,7 +110,7 @@ class KerasModelBuilder:
                 rnn_cls = getattr(layers, layer_type)
                 model.add(rnn_cls(units=units, return_sequences=return_seq, name=f"{layer_type.lower()}_{index}"))
 
-            elif layer_type in {"Conv1D", "Conv2D"}:
+            elif layer_type == "Conv1D":
                 filters = int(layer_config.get("filters") or 32)
                 k_size = layer_config.get("kernel_size") or layer_config.get("kernelSize") or 3
                 if isinstance(k_size, list):
@@ -102,11 +118,17 @@ class KerasModelBuilder:
                 k_size = max(1, min(int(k_size), input_dim))
                 model.add(layers.Conv1D(filters=filters, kernel_size=k_size, activation=activation, padding="same", name=f"conv1d_{index}"))
 
-            elif layer_type in {"MaxPooling1D", "MaxPooling2D"}:
+            elif layer_type == "MaxPooling1D":
                 pool_size = layer_config.get("pool_size") or layer_config.get("poolSize") or 2
                 if isinstance(pool_size, list):
                     pool_size = pool_size[0]
                 model.add(layers.MaxPooling1D(pool_size=int(pool_size), padding="same", name=f"maxpool_{index}"))
+
+            elif layer_type in {"Conv2D", "MaxPooling2D"}:
+                raise ModelBuildError(
+                    f"Capa {index}: '{layer_type}' no está soportada para datos tabulares. "
+                    "Use Conv1D/MaxPooling1D para características tabulares."
+                )
 
             elif layer_type == "Flatten":
                 model.add(layers.Flatten(name=f"flatten_{index}"))
@@ -144,8 +166,15 @@ class KerasModelBuilder:
             "adam": optimizers.Adam,
             "sgd": optimizers.SGD,
             "rmsprop": optimizers.RMSprop,
+            "adamw": optimizers.AdamW,
+            "nadam": optimizers.Nadam,
         }
-        optimizer_cls = optimizer_map.get(optimizer_name, optimizers.Adam)
+        optimizer_cls = optimizer_map.get(optimizer_name)
+        if optimizer_cls is None:
+            raise ModelBuildError(
+                f"Optimizador no soportado: '{optimizer_name}'. "
+                "Use uno de: adam, sgd, rmsprop, adamw, nadam."
+            )
         optimizer = optimizer_cls(learning_rate=learning_rate)
 
         model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics))

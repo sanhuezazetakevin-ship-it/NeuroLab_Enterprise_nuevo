@@ -26,6 +26,12 @@ venv.bak/
 # Environment and Secrets
 .env
 *.env.local
+apps/web/.env.production
+.env.production
+
+# Datos y binarios que no deben versionarse
+data_prueba_clientes.csv
+docs/NeuroLab_Enterprise_Reporte_Cumplimiento.pdf
 
 # IDEs
 .idea/

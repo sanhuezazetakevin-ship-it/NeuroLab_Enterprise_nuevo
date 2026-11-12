@@ -1,7 +1,7 @@
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -25,11 +25,22 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
+    # El eco de SQL es útil para depurar pero multiplica el I/O y el tamaño de
+    # los logs. Se activa explícitamente con SQL_ECHO=true.
+    SQL_ECHO: bool = False
 
     SECRET_KEY: str = "neurolab_insecure_default_secret_key_change_me_32chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
+    # Bloqueo temporal por cuenta tras varios fallos consecutivos.
+    LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    LOGIN_LOCKOUT_SECONDS: int = 900
+    # Sólo se confía en X-Forwarded-For cuando la conexión viene de uno de
+    # estos proxies. En Docker, añada la subred del proxy (p. ej. 172.16.0.0/12).
+    TRUSTED_PROXY_IPS: Annotated[List[str], NoDecode] = ["127.0.0.1", "::1"]
+    # Vida del ticket de un solo uso para SSE/WebSocket.
+    STREAM_TICKET_TTL_SECONDS: int = 30
 
     POSTGRES_USER: str = "neurolab"
     POSTGRES_PASSWORD: str = "neurolab_secure_pass"
@@ -69,9 +80,11 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "neurolab"
     S3_FORCE_PATH_STYLE: bool = True
 
-    # Bootstrap account (change in every non-local environment).
+    # Bootstrap account. La contraseña no tiene valor por defecto: si no se
+    # define SEED_ADMIN_PASSWORD, `ensure_seed_admin` genera una aleatoria y la
+    # muestra una sola vez en los logs del primer arranque.
     SEED_ADMIN_EMAIL: str = "admin@neurolab.enterprise"
-    SEED_ADMIN_PASSWORD: str = "Admin123!"
+    SEED_ADMIN_PASSWORD: Optional[str] = None
     SEED_ADMIN_NAME: str = "Administrador NeuroLab"
 
     # NoDecode evita que pydantic-settings intente interpretar el valor como
@@ -82,9 +95,9 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://localhost:3000",
     ]
-    CORS_ORIGIN_REGEX: str = r"^https:\/\/.*\.vercel\.app$"
+    CORS_ORIGIN_REGEX: str = ""
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", "TRUSTED_PROXY_IPS", mode="before")
     @classmethod
     def _split_origins(cls, value):
         if isinstance(value, str):
@@ -169,12 +182,13 @@ def get_settings() -> Settings:
                 "Configure una clave criptográfica de al menos 32 caracteres."
             )
         if (
-            settings.SEED_ADMIN_PASSWORD in {"Admin123!", "admin", "password"}
-            or len(settings.SEED_ADMIN_PASSWORD) < 8
+            not settings.SEED_ADMIN_PASSWORD
+            or settings.SEED_ADMIN_PASSWORD in {"Admin123!", "admin", "password"}
+            or len(settings.SEED_ADMIN_PASSWORD) < 12
         ):
             raise RuntimeError(
-                "SEED_ADMIN_PASSWORD insegura en producción. "
-                "Defina una contraseña robusta para el administrador inicial."
+                "SEED_ADMIN_PASSWORD ausente o insegura en producción. "
+                "Defina una contraseña robusta (mínimo 12 caracteres) para el administrador inicial."
             )
     return settings
 

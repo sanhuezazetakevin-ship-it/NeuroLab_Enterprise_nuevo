@@ -11,7 +11,7 @@ TaskType = Literal["classification", "regression"]
 class HyperparametersConfig(BaseModel):
     epochs: int = Field(default=30, ge=1, le=1000)
     batch_size: int = Field(default=32, ge=1, le=4096)
-    optimizer: Literal["adam", "sgd", "rmsprop"] = "adam"
+    optimizer: Literal["adam", "sgd", "rmsprop", "adamw", "nadam"] = "adam"
     learning_rate: float = Field(default=0.001, gt=0.0, le=1.0)
     loss: Optional[str] = None
     metrics: List[str] = Field(default_factory=lambda: ["accuracy"])

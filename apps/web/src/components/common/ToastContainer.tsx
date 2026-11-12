@@ -8,40 +8,49 @@ export const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div
+      className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-2.5rem)] pointer-events-none"
+      aria-label="Notificaciones del sistema"
+    >
       {toasts.map((toast) => {
         let Icon = CheckCircle2;
-        let borderClass = 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400';
+        let toneClass = 'border-emerald-500/35 text-emerald-700 dark:text-emerald-300';
         let iconColor = 'text-emerald-600 dark:text-emerald-400';
 
         if (toast.type === 'warning') {
           Icon = AlertTriangle;
-          borderClass = 'border-amber-500/30 text-amber-600 dark:text-amber-400';
+          toneClass = 'border-amber-500/35 text-amber-700 dark:text-amber-300';
           iconColor = 'text-amber-600 dark:text-amber-400';
         } else if (toast.type === 'error') {
           Icon = XCircle;
-          borderClass = 'border-rose-500/30 text-rose-600 dark:text-rose-400';
+          toneClass = 'border-rose-500/35 text-rose-700 dark:text-rose-300';
           iconColor = 'text-rose-600 dark:text-rose-400';
         } else if (toast.type === 'info') {
           Icon = Info;
-          borderClass = 'border-zinc-500/30 text-zinc-700 dark:text-zinc-300';
-          iconColor = 'text-zinc-700 dark:text-zinc-300';
+          toneClass = 'border-sky-500/35 text-sky-700 dark:text-sky-300';
+          iconColor = 'text-sky-600 dark:text-sky-400';
         }
+
+        const isError = toast.type === 'error';
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl glass-panel shadow-glass border animate-in slide-in-from-right-5 fade-in duration-200 ${borderClass}`}
+            role={isError ? 'alert' : 'status'}
+            aria-live={isError ? 'assertive' : 'polite'}
+            aria-atomic="true"
+            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl glass-panel shadow-glass border animate-in slide-in-from-right-5 fade-in duration-200 ${toneClass}`}
           >
-            <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${iconColor}`} />
-            <div className="flex-1 text-xs text-zinc-900 dark:text-white leading-snug font-medium">
+            <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${iconColor}`} aria-hidden="true" />
+            <div className="flex-1 text-sm text-zinc-900 dark:text-white leading-snug font-medium">
               {toast.message}
             </div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-zinc-400 dark:text-white/40 hover:text-zinc-900 dark:hover:text-white transition-colors p-0.5"
+              className="text-zinc-500 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white transition-colors p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
+              aria-label="Cerrar notificación"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         );

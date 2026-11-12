@@ -16,6 +16,7 @@ import { useApp } from '../../lib/AppContext';
 import { ApiClient } from '../../lib/api';
 import { NetworkFamily, Project } from '../../types';
 import { formatDate } from '../../lib/format';
+import type { NavigateFn } from '../../lib/guidedFlow';
 
 const FAMILY_OPTIONS: {
   id: NetworkFamily;
@@ -63,7 +64,11 @@ const FAMILY_NAMES: Record<NetworkFamily, string> = {
   GAN: 'Generativa (GAN)',
 };
 
-export const ProjectsView: React.FC = () => {
+interface ProjectsViewProps {
+  onNavigate?: NavigateFn;
+}
+
+export const ProjectsView: React.FC<ProjectsViewProps> = ({ onNavigate }) => {
   const {
     projects,
     projectsLoading,
@@ -123,9 +128,10 @@ export const ProjectsView: React.FC = () => {
       setDescription('');
       setNetworkFamily('FEEDFORWARD');
       showToast(
-        `Proyecto "${resolved.name}" creado (${FAMILY_NAMES[networkFamily]}). Suba el CSV en Datasets.`,
+        `Proyecto "${resolved.name}" creado (${FAMILY_NAMES[networkFamily]}). Ahora cargue su CSV para continuar.`,
         'success',
       );
+      onNavigate?.('datasets', { openUpload: true });
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : 'No fue posible crear el proyecto');
     } finally {
@@ -148,8 +154,8 @@ export const ProjectsView: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Espacios de Trabajo
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-white/50 mt-0.5">
-            Proyectos aislados con control de acceso por rol, datasets, arquitecturas y modelos asociados.
+          <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
+            Proyectos aislados con control de acceso por rol, conjuntos de datos, arquitecturas y modelos asociados.
           </p>
         </div>
 
@@ -178,7 +184,7 @@ export const ProjectsView: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-zinc-400 dark:text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-zinc-400 dark:text-white/65 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar proyectos…"
@@ -187,7 +193,7 @@ export const ProjectsView: React.FC = () => {
             className="w-full glass-input rounded-xl pl-10 pr-3 py-2 text-xs"
           />
         </div>
-        <span className="text-[11px] text-zinc-500 dark:text-white/45">
+        <span className="text-xs text-zinc-500 dark:text-white/65">
           {projects.length} proyecto(s) accesibles · rol global{' '}
           <strong className="font-mono text-zinc-800 dark:text-white/80">{currentRole}</strong>
         </span>
@@ -212,13 +218,13 @@ export const ProjectsView: React.FC = () => {
 
       {!projectsLoading && !projectsError && filteredProjects.length === 0 && (
         <div className="glass-card rounded-2xl p-10 flex flex-col items-center text-center gap-2">
-          <FolderGit2 className="w-6 h-6 text-zinc-400 dark:text-white/40" />
+          <FolderGit2 className="w-6 h-6 text-zinc-400 dark:text-white/65" />
           <p className="text-sm font-semibold text-zinc-900 dark:text-white">
             {projects.length === 0 ? 'Aún no hay proyectos' : 'Sin resultados'}
           </p>
-          <p className="text-xs text-zinc-500 dark:text-white/50 max-w-md">
+          <p className="text-xs text-zinc-500 dark:text-white/65 max-w-md">
             {projects.length === 0
-              ? 'Cree su primer proyecto para cargar datasets, diseñar arquitecturas y entrenar modelos.'
+              ? 'Cree su primer proyecto para cargar conjuntos de datos, diseñar arquitecturas y entrenar modelos.'
               : 'Pruebe con otro término de búsqueda.'}
           </p>
         </div>
@@ -240,11 +246,11 @@ export const ProjectsView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 border border-black/10 dark:border-white/10">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 border border-black/10 dark:border-white/10">
                       {project.effectiveRole || project.status}
                     </span>
                     <span
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/25"
+                      className="text-xs font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/25"
                       title={FAMILY_NAMES[project.networkFamily] || project.networkFamily}
                     >
                       {FAMILY_SHORT[project.networkFamily] || project.networkFamily}
@@ -255,21 +261,21 @@ export const ProjectsView: React.FC = () => {
                       <CheckCircle2 className="w-3.5 h-3.5" /> Activo
                     </span>
                   ) : (
-                    <span className="text-[10px] text-zinc-500 dark:text-white/40">{formatDate(project.createdAt)}</span>
+                    <span className="text-xs text-zinc-500 dark:text-white/65">{formatDate(project.createdAt)}</span>
                   )}
                 </div>
 
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{project.name}</h3>
-                <p className="text-xs text-zinc-600 dark:text-white/50 mt-1 leading-relaxed line-clamp-2">
+                <p className="text-xs text-zinc-600 dark:text-white/65 mt-1 leading-relaxed line-clamp-2">
                   {project.description || 'Sin descripción.'}
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-black/10 dark:border-white/10 grid grid-cols-3 gap-2 text-[11px] text-zinc-500 dark:text-white/50">
+              <div className="pt-3 border-t border-black/10 dark:border-white/10 grid grid-cols-3 gap-2 text-xs text-zinc-500 dark:text-white/65">
                 <span className="flex items-center gap-1" title="Arquitecturas">
                   <Layers className="w-3.5 h-3.5 text-zinc-600 dark:text-white/60" /> {project.architecturesCount}
                 </span>
-                <span className="flex items-center gap-1" title="Datasets">
+                <span className="flex items-center gap-1" title="Conjuntos de datos">
                   <Database className="w-3.5 h-3.5 text-zinc-600 dark:text-white/60" /> {project.datasetsCount}
                 </span>
                 <span className="flex items-center gap-1" title="Trabajos de entrenamiento">
@@ -288,7 +294,7 @@ export const ProjectsView: React.FC = () => {
               <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Nuevo Proyecto</h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-zinc-400 dark:text-white/40 hover:text-zinc-900 dark:hover:text-white"
+                className="text-zinc-400 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -339,11 +345,11 @@ export const ProjectsView: React.FC = () => {
                       }`}
                     >
                       <span className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-semibold text-zinc-900 dark:text-white">
+                        <span className="text-xs font-semibold text-zinc-900 dark:text-white">
                           {option.label}
                         </span>
                         <span
-                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full border ${
+                          className={`text-xs font-mono px-1.5 py-0.5 rounded-full border ${
                             option.trainable
                               ? 'text-emerald-700 dark:text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
                               : 'text-amber-700 dark:text-amber-300 border-amber-500/30 bg-amber-500/10'
@@ -352,21 +358,21 @@ export const ProjectsView: React.FC = () => {
                           {option.trainable ? 'Entrena' : 'Solo diseño'}
                         </span>
                       </span>
-                      <span className="block text-[10px] text-zinc-500 dark:text-white/45 mt-0.5 leading-snug">
+                      <span className="block text-xs text-zinc-500 dark:text-white/65 mt-0.5 leading-snug">
                         {option.description}
                       </span>
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-1.5">
+              <p className="text-xs text-zinc-500 dark:text-white/65 mt-1.5">
                 El proyecto queda asociado a esta familia. El diseñador la usará por defecto y podrá
                 cambiarla si necesita otra topología.
               </p>
             </div>
 
             {createError && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
+              <p className="text-xs text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {createError}
               </p>
             )}
@@ -374,7 +380,7 @@ export const ProjectsView: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/50 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                className="px-3.5 py-2 text-xs text-zinc-500 dark:text-white/65 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
                 Cancelar
               </button>

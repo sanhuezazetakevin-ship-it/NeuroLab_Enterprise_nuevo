@@ -7,5 +7,5 @@
 #
 # Sin estas dependencias, /predict responde 503 y el resto de la API opera con
 # normalidad (descarga de modelos, ficha y manifiesto no las necesitan).
-tensorflow>=2.15.0
-scikit-learn>=1.4.0
+tensorflow==2.21.0
+scikit-learn==1.9.0

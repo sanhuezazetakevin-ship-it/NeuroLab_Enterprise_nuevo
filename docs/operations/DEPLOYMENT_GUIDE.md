@@ -24,7 +24,7 @@ Copie `.env.example` a `.env` y ajuste los valores.
 | `ALGORITHM` | `HS256` | Algoritmo JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `480` | Vigencia del token |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | Intentos de login por IP y minuto |
-| `SEED_ADMIN_*` | admin/`Admin123!` | Sólo se aplica si `users` está vacía |
+| `SEED_ADMIN_*` | admin / contraseña generada | Sólo se aplica si `users` está vacía; defina `SEED_ADMIN_PASSWORD` en producción |
 | `DATABASE_URL` | PostgreSQL local | URL async (`postgresql+asyncpg://…` o `sqlite+aiosqlite:///…`) |
 | `REDIS_URL` | `redis://localhost:6379/0` | Conexión Redis |
 | `QUEUE_BACKEND` | `redis` | `redis` o `filesystem` |
@@ -362,7 +362,8 @@ No existe endpoint de reset de contraseña por administrador en el MVP. Si un us
 | Job en `QUEUED` indefinidamente | Worker no corre o apunta a otra cola/BD | Revise logs del worker, `QUEUE_BACKEND`, `TRAINING_QUEUE`, `DATABASE_URL` |
 | `El archivo del dataset no existe` | `DATA_DIR` distinto entre API y worker | Unifique el volumen/ruta |
 | `La forma de entrada no coincide` | `input_shape` distinto de las features del CSV | Ajuste la arquitectura con el preview del dataset |
-| `422` al entrenar RNN/CNN/GAN | Familia no habilitada en el MVP | Use FEEDFORWARD o espere la habilitación progresiva |
+| `422` al entrenar GAN | Familia generativa no habilitada | Use FEEDFORWARD, RNN o CNN; GAN es conceptual en el MVP |
+| `422` con `Conv2D`/`MaxPooling2D` en CNN | Capas 2D no aplican a datos tabulares | Cambie a `Conv1D`/`MaxPooling1D` |
 | Modelo sin descarga (`404`) | Artefacto no está en el nodo o `MODEL_DIR` distinto | Verifique el volumen y la ruta `storage_key` |
 | SSE se corta tras el proxy | Buffering o timeout | Confirme `proxy_buffering off` y timeouts largos en Nginx |
 | Login `429` | Rate limit por IP | Espere un minuto o ajuste `LOGIN_RATE_LIMIT_PER_MINUTE` |

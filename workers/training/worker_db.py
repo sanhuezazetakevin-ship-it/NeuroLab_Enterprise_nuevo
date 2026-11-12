@@ -8,9 +8,10 @@ por época, la auditoría y la versión inmutable del modelo.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterator, List, Optional
 
 from sqlalchemy import (
@@ -30,6 +31,7 @@ from sqlalchemy import (
     create_engine,
     func,
     insert,
+    or_,
     select,
     update,
 )
@@ -37,6 +39,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 
 from worker_config import DATABASE_URL
+
+logger = logging.getLogger("neurolab.worker.db")
 
 JSONType = JSON().with_variant(JSONB, "postgresql")
 
@@ -57,6 +61,8 @@ training_jobs = Table(
     Column("started_at", DateTime(timezone=True), nullable=True),
     Column("ended_at", DateTime(timezone=True), nullable=True),
     Column("error_message", Text, nullable=True),
+    Column("worker_id", String(150), nullable=True),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Index("idx_training_jobs_project", "project_id"),
 )
@@ -178,6 +184,8 @@ def set_job_status(
     error_message: Optional[str] = None,
     started_at: Optional[datetime] = None,
     ended_at: Optional[datetime] = None,
+    worker_id: Optional[str] = None,
+    heartbeat_at: Optional[datetime] = None,
 ) -> None:
     values: Dict[str, Any] = {"status": status}
     if progress is not None:
@@ -188,7 +196,28 @@ def set_job_status(
         values["started_at"] = started_at
     if ended_at is not None:
         values["ended_at"] = ended_at
+    if worker_id is not None:
+        values["worker_id"] = worker_id
+    if heartbeat_at is not None:
+        values["heartbeat_at"] = heartbeat_at
     update_job(job_id, **values)
+
+
+def touch_job(job_id: uuid.UUID, worker_id: str) -> None:
+    """Renueva el lease del trabajo solo si pertenece a este worker.
+
+    Se llama al iniciar y en cada época para que otro worker pueda distinguir
+    un trabajo vivo de uno abandonado tras una caída.
+    """
+    with connection() as conn:
+        conn.execute(
+            update(training_jobs)
+            .where(
+                training_jobs.c.id == job_id,
+                training_jobs.c.worker_id == worker_id,
+            )
+            .values(heartbeat_at=utcnow())
+        )
 
 
 def get_job(job_id: uuid.UUID) -> Optional[Dict[str, Any]]:
@@ -387,15 +416,26 @@ def cancel_requested(job_id: uuid.UUID) -> bool:
     return bool(job and job.get("cancel_requested"))
 
 
-def recover_orphaned_jobs() -> int:
-    """Identifica trabajos en RUNNING o PREPARING que quedaron huérfanos tras caída del worker."""
+def recover_orphaned_jobs(*, stale_after_seconds: int = 900) -> int:
+    """Falla trabajos en RUNNING/PREPARING cuyo lease haya caducado.
+
+    Solo se consideran huérfanos los trabajos sin heartbeat reciente. Así un
+    worker que arranca no interrumpe entrenamientos vivos de otras réplicas.
+    """
+    cutoff = utcnow() - timedelta(seconds=max(1, int(stale_after_seconds)))
     with connection() as conn:
         result = conn.execute(
             update(training_jobs)
-            .where(training_jobs.c.status.in_(["RUNNING", "PREPARING"]))
+            .where(
+                training_jobs.c.status.in_(["RUNNING", "PREPARING"]),
+                or_(
+                    training_jobs.c.heartbeat_at.is_(None),
+                    training_jobs.c.heartbeat_at < cutoff,
+                ),
+            )
             .values(
                 status="FAILED",
-                error_message="El proceso de entrenamiento se interrumpió inesperadamente (recuperado al reiniciar el worker)",
+                error_message="El proceso de entrenamiento se interrumpió inesperadamente (lease caducado)",
                 ended_at=utcnow(),
             )
         )

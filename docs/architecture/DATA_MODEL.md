@@ -64,7 +64,7 @@ Valores válidos de `status`: `ACTIVE`, `INACTIVE`, `SUSPENDED`.
 
 Índice: `idx_projects_owner (owner_id)`.
 `status`: `ACTIVE` o `ARCHIVED`.
-`network_family`: `FEEDFORWARD`, `RNN`, `CNN` o `GAN`. Es la familia por defecto del diseñador; el proyecto puede contener arquitecturas de otras familias. Sólo `FEEDFORWARD` está habilitada para entrenamiento con CSV tabular.
+`network_family`: `FEEDFORWARD`, `RNN`, `CNN` o `GAN`. Es la familia por defecto del diseñador; el proyecto puede contener arquitecturas de otras familias. `FEEDFORWARD`, `RNN` y `CNN` están habilitadas para entrenamiento con CSV tabular; `GAN` es conceptual.
 
 ### 2.3 `project_members`
 

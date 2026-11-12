@@ -28,7 +28,7 @@ Este repositorio es una implementación funcional, no una maqueta. La interfaz R
 | Descarga de la ficha (`/card`) y del manifiesto (`/manifest`) | ✅ Implementado (no requiere TensorFlow) |
 | Reportes y exportaciones con datos persistidos | ✅ Implementado |
 | Administración de usuarios y estado del sistema | ✅ Implementado |
-| RNN / CNN / GAN | ⚠️ Se diseñan, validan y guardan; el entrenamiento devuelve `422` con la razón. Habilitación progresiva según el documento del MVP. |
+| RNN / CNN / GAN | ✅ RNN y CNN entrenan sobre CSV tabular (adaptador secuencial / convolucional 1D). GAN se diseña y valida; su entrenamiento devuelve `422` con la razón. |
 | Object storage S3/MinIO | ✅ Implementado (`STORAGE_BACKEND=s3`). Por defecto se usa un volumen local compartido (`DATA_DIR` / `MODEL_DIR`). |
 | Redis | ✅ Backend de cola por defecto. Para desarrollo local también existe `QUEUE_BACKEND=filesystem`. |
 
@@ -153,7 +153,7 @@ El frontend se sirve con Nginx y consume la API a través del proxy `/api/` del 
 Se crea un único administrador **sólo si la tabla `users` está vacía**:
 
 - **Email:** `admin@neurolab.enterprise`
-- **Contraseña:** `Admin123!`
+- **Contraseña:** la define `SEED_ADMIN_PASSWORD` (mínimo 12 caracteres). Si no se configura, el arranque genera una aleatoria y la muestra una sola vez en los logs.
 
 Cambie la contraseña en el primer acceso. Las variables `SEED_ADMIN_*` no restablecen contraseñas existentes.
 
@@ -199,6 +199,11 @@ background workers y solo ofrece 512 MB.
 ---
 
 ## 6. Desarrollo local sin Docker
+
+> **Arranque preparado para este equipo:** use
+> `powershell -ExecutionPolicy Bypass -File scripts/start_local.ps1` (API en
+> `8012`, web en `5185`) y consulte `docs/ARRANQUE_LOCAL.md`. No siembra datos de
+> demostración. Los pasos manuales de esta sección son la alternativa genérica.
 
 ### 6.1 Configuración compartida (`.env`)
 
@@ -361,7 +366,7 @@ Roles globales: `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER`, `REVIEWER`, `VIEWER`.
 | Crear proyecto | `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER` |
 | Editar proyecto / gestionar miembros | `ADMIN`, `PROJECT_LEAD` (rol efectivo en el proyecto) |
 | Subir datasets, crear arquitecturas, entrenar, cancelar | `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER` |
-| Aprobar o retirar modelos | `ADMIN`, `PROJECT_LEAD` |
+| Aprobar o retirar modelos | `ADMIN`, `PROJECT_LEAD`, `REVIEWER` |
 | Administración de usuarios y sistema | `ADMIN` |
 | Consulta de proyectos, datasets, jobs, modelos y auditoría | Cualquier miembro del proyecto |
 
@@ -397,7 +402,7 @@ DRAFT ──▶ REVIEWED ──▶ APPROVED ──▶ RETIRED
   └───────────┴──────────────────────▶ RETIRED
 ```
 
-`APPROVED` y `RETIRED` requieren `ADMIN` o `PROJECT_LEAD`. Cada transición queda auditada con actor, versión, estado anterior y motivo.
+`APPROVED` y `RETIRED` requieren `ADMIN`, `PROJECT_LEAD` o `REVIEWER`. Cada transición queda auditada con actor, versión, estado anterior y motivo.
 
 ### Inferencia en línea (opcional)
 
@@ -532,7 +537,7 @@ alembic revision --autogenerate -m "descripcion"
 
 ## 14. Limitaciones conocidas (MVP)
 
-- Entrenamiento real habilitado sólo para **FEEDFORWARD** sobre CSV tabular. RNN/CNN/GAN se validan y persisten, pero el worker rechaza su entrenamiento con un mensaje explícito.
+- Entrenamiento real habilitado para **FEEDFORWARD, RNN y CNN** sobre CSV tabular. Las CNN usan el adaptador convolucional 1D (`Conv1D`/`MaxPooling1D`); `Conv2D`/`MaxPooling2D` se rechazan porque los datos tabulares no son imágenes. GAN se valida y persiste, pero el worker rechaza su entrenamiento con un mensaje explícito.
 - La descarga directa expone únicamente `model.keras`; scaler, preprocesador, manifiesto y ficha viven junto al artefacto y se consultan por `/card` y `/manifest` o desde el volumen.
 - **Inferencia opcional y síncrona:** requiere instalar `requirements-inference.txt` en el servicio de API; mantiene hasta 4 modelos en memoria (LRU) y serializa las llamadas a Keras. No hay cola de inferencia por lotes ni autoescalado por carga.
 - El umbral de decisión se ajusta sobre el conjunto de prueba. Es una decisión documentada en la ficha y en el manifiesto, pero para producción estricta convendría un conjunto de calibración independiente.

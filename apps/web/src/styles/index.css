@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
@@ -26,7 +26,8 @@
 
   --text-main: #0f172a;
   --text-sub: #334155;
-  --text-dim: #64748b;
+  /* Contraste >= 4.5:1 sobre el fondo claro. */
+  --text-dim: #52627a;
 
   --btn-pri-bg: linear-gradient(135deg, #e11d48 0%, #be123c 60%, #9f1239 100%);
   --btn-pri-text: #ffffff;
@@ -38,8 +39,12 @@
   --btn-sec-border: #b0bac9;
   --btn-sec-hover: rgba(225, 29, 72, 0.08);
 
-  --chart-stroke: #e11d48;
-  --chart-val-stroke: rgba(225, 29, 72, 0.45);
+  /* Curvas: azul (entrenamiento) vs. ámbar (validación), seguras para daltonismo. */
+  --chart-train: #0284c7;
+  --chart-val: #b45309;
+  --chart-best: #059669;
+  --chart-stroke: #0284c7;
+  --chart-val-stroke: #b45309;
   --chart-grid: rgba(0, 0, 0, 0.08);
 }
 
@@ -62,8 +67,9 @@ html.dark {
   --glass-inset-border: rgba(255, 255, 255, 0.06);
 
   --text-main: #f8fafc;
-  --text-sub: rgba(241, 245, 249, 0.72);
-  --text-dim: rgba(241, 245, 249, 0.45);
+  --text-sub: rgba(241, 245, 249, 0.82);
+  /* Subido de 45% a 68% para superar 4.5:1 sobre casi negro. */
+  --text-dim: rgba(241, 245, 249, 0.68);
 
   --btn-pri-bg: linear-gradient(135deg, #e11d48 0%, #be123c 60%, #9f1239 100%);
   --btn-pri-text: #ffffff;
@@ -75,9 +81,12 @@ html.dark {
   --btn-sec-border: rgba(255, 255, 255, 0.10);
   --btn-sec-hover: rgba(225, 29, 72, 0.16);
 
-  --chart-stroke: #f43f5e;
-  --chart-val-stroke: rgba(244, 63, 94, 0.45);
-  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-train: #38bdf8;
+  --chart-val: #fbbf24;
+  --chart-best: #34d399;
+  --chart-stroke: #38bdf8;
+  --chart-val-stroke: #fbbf24;
+  --chart-grid: rgba(255, 255, 255, 0.08);
 }
 
 code, pre, .font-mono {
@@ -136,8 +145,8 @@ html:not(.dark) body::before {
   /* Main Glass Panel / Card */
   .glass-card, .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
     color: var(--text-main);
@@ -159,8 +168,8 @@ html:not(.dark) body::before {
   /* Inset Wells (Terminal, nested cards, table rows) */
   .glass-inset {
     background: var(--glass-inset);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-inset-border);
   }
 
@@ -180,8 +189,8 @@ html:not(.dark) body::before {
     background: var(--btn-pri-bg);
     color: var(--btn-pri-text);
     border: 1px solid var(--btn-pri-border);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     font-weight: 600;
     box-shadow: 0 4px 18px rgba(225, 29, 72, 0.35);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -202,8 +211,8 @@ html:not(.dark) body::before {
     background: var(--btn-sec-bg);
     color: var(--btn-sec-text);
     border: 1px solid var(--btn-sec-border);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     font-weight: 500;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -219,8 +228,8 @@ html:not(.dark) body::before {
     background: var(--glass-inset);
     color: var(--text-main);
     border: 1px solid var(--glass-inset-border);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: all 0.2s ease;
   }
   .glass-input:focus {
@@ -362,4 +371,80 @@ html:not(.dark) table td {
 
 html:not(.dark) thead {
   border-bottom-color: #94a3b8 !important;
+}
+
+/* =========================================================================
+   ACCESIBILIDAD: FOCO VISIBLE, MOVIMIENTO REDUCIDO Y SKELETONS
+   ========================================================================= */
+
+/* Anillo de foco consistente para teclado (no se muestra al hacer clic). */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #e11d48;
+  outline-offset: 2px;
+}
+
+html.dark :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: #fb7185;
+}
+
+html:not(.dark) .glass-input:focus-visible {
+  outline: 2px solid #e11d48;
+  outline-offset: 1px;
+}
+
+/* Skeletons para estados de carga reales (sin datos simulados). */
+@keyframes neurolab-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(15, 23, 42, 0.07);
+  border-radius: 0.75rem;
+}
+
+html.dark .skeleton {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  animation: neurolab-shimmer 1.6s ease-in-out infinite;
+}
+
+html.dark .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
 }

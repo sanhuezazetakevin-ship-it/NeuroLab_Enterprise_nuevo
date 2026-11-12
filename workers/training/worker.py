@@ -18,9 +18,11 @@ import json
 import logging
 import os
 import signal
+import socket
 import sys
 import time
 import traceback
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -49,6 +51,7 @@ from worker_config import (
     REDIS_URL,
     TEMP_DIR,
     TRAINING_QUEUE,
+    WORKER_HEARTBEAT_TIMEOUT_SECONDS,
 )
 from worker_events import (
     EventPublisher,
@@ -62,6 +65,10 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("neurolab.worker")
+
+# Identidad del proceso de entrenamiento. Se persiste en cada trabajo para que
+# el lease (worker_id + heartbeat) sea verificable desde cualquier réplica.
+WORKER_ID = os.getenv("WORKER_ID") or f"{socket.gethostname()}:{os.getpid()}"
 
 TERMINAL = {"COMPLETED", "CANCELLED"}
 
@@ -171,7 +178,15 @@ class TrainingWorkerDaemon:
             return "CANCELLED"
 
         logger.info("==> Trabajo %s: QUEUED -> PREPARING", job_id)
-        db.set_job_status(job_id, "PREPARING", progress=0.0, started_at=_now(), error_message="")
+        db.set_job_status(
+            job_id,
+            "PREPARING",
+            progress=0.0,
+            started_at=_now(),
+            error_message="",
+            worker_id=WORKER_ID,
+            heartbeat_at=_now(),
+        )
         try:
             db.clear_metrics(job_id)
         except Exception:
@@ -226,7 +241,13 @@ class TrainingWorkerDaemon:
             total_epochs = int(hyperparameters.get("epochs", 30) or 30)
             model.summary(print_fn=lambda line: logger.debug(line))
 
-            db.set_job_status(job_id, "RUNNING", progress=1.0)
+            db.set_job_status(
+                job_id,
+                "RUNNING",
+                progress=1.0,
+                worker_id=WORKER_ID,
+                heartbeat_at=_now(),
+            )
             self.publisher.state(job_id, "RUNNING", progress=1.0)
 
             def on_epoch(epoch: int, metrics: Dict[str, float]) -> None:
@@ -234,6 +255,7 @@ class TrainingWorkerDaemon:
                 try:
                     db.insert_metrics(job_id, epoch, metrics)
                     db.update_job(job_id, progress=progress)
+                    db.touch_job(job_id, WORKER_ID)
                 except Exception:
                     logger.warning("No fue posible persistir métricas de la época %s", epoch, exc_info=True)
                 self.publisher.epoch(job_id, epoch, total_epochs, metrics, progress)
@@ -451,6 +473,22 @@ class TrainingWorkerDaemon:
             except OSError:
                 logger.warning("No fue posible recuperar %s", path, exc_info=True)
 
+    def warm_up(self) -> None:
+        """Paga una sola vez las inicializaciones perezosas antes del primer trabajo.
+
+        Sin esto, el primer trabajo de un worker recién arrancado absorbía el
+        coste de abrir el motor de base de datos, inicializar los generadores
+        de Keras y capturar el entorno. Al hacerlo al arrancar, la espera del
+        usuario se reduce al sondeo de la cola.
+        """
+        try:
+            db.get_job(uuid.uuid4())
+            configure_determinism(42, deterministic=False)
+            capture_environment()
+            self.publisher.warm_up()
+        except Exception:
+            logger.debug("Calentamiento del worker incompleto", exc_info=True)
+
     def _next_filesystem_job(self) -> Optional[Dict[str, Any]]:
         candidates = sorted(Path(QUEUE_DIR).glob("*.json"))
         if not candidates:
@@ -505,6 +543,7 @@ class TrainingWorkerDaemon:
         return True
 
     def run_forever(self) -> None:
+        self.warm_up()
         logger.info(
             "NeuroLab Training Worker activo (backend=%s, data=%s, models=%s)",
             QUEUE_BACKEND,
@@ -512,7 +551,9 @@ class TrainingWorkerDaemon:
             MODEL_DIR,
         )
         try:
-            recovered_count = db.recover_orphaned_jobs()
+            recovered_count = db.recover_orphaned_jobs(
+                stale_after_seconds=WORKER_HEARTBEAT_TIMEOUT_SECONDS
+            )
             if recovered_count > 0:
                 logger.warning("Se recuperaron %d trabajos huérfanos que quedaron en RUNNING/PREPARING", recovered_count)
         except Exception:

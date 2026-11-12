@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neurolab_secure_pass}
       POSTGRES_DB: ${POSTGRES_DB:-neurolab_db}
     ports:
-      - "5432:5432"
+      # Sólo accesible desde el host local; no exponga PostgreSQL a Internet.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +24,8 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      # Sólo accesible desde el host local; no exponga Redis a Internet.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -51,6 +53,9 @@ services:
       DATA_DIR: /data/uploads
       MODEL_DIR: /data/models
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # Nginx y la API comparten la red de Docker. Sólo se confía en
+      # X-Forwarded-For dentro de esa subred.
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-127.0.0.1,::1,172.16.0.0/12}
     ports:
       - "8000:8000"
     volumes:
@@ -104,7 +109,7 @@ services:
     container_name: neurolab_web
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "5173:8080"
     depends_on:
       api:
         condition: service_healthy

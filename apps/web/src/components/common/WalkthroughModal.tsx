@@ -32,14 +32,14 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
       title: 'NeuroLab Enterprise',
       subtitle: 'Plataforma real para diseñar, entrenar y gobernar redes neuronales',
       icon: Layers,
-      badge: 'Semana 11',
+      badge: 'Visión general',
       content: (
         <div className="space-y-2.5 text-xs text-zinc-700 dark:text-white/70">
           <p>
-            Esta instancia opera contra la API <strong>/api/v1</strong>, PostgreSQL y workers
-            TensorFlow/Keras aislados. Todos los datos provienen de la base de datos real.
+            Esta instancia opera contra la API <strong>/api/v1</strong>, Supabase (PostgreSQL) y
+            workers TensorFlow/Keras aislados. Todos los datos provienen de la base de datos real.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 space-y-1 border border-zinc-200/80 dark:border-white/10 text-[11px]">
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 space-y-1 border border-zinc-200/80 dark:border-white/10 text-xs">
             <span className="font-semibold text-zinc-900 dark:text-white/90 uppercase tracking-wider block">
               Flujo verificado
             </span>
@@ -62,12 +62,13 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
       content: (
         <div className="space-y-2.5 text-xs text-zinc-700 dark:text-white/70">
           <p>
-            Cree un proyecto o seleccione uno existente. El rol efectivo determina sus permisos:
-            los roles <strong>Lector</strong> y <strong>Revisor</strong> consultan, mientras que{' '}
-            <strong>Ingeniero de IA</strong> y <strong>Administrador</strong> entrenan.
+            Cree un proyecto con nombre, descripción y tipo de red. Al guardarlo, la app abre
+            automáticamente la carga del CSV para continuar el flujo.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
-            El selector de proyecto en la barra superior cambia el contexto de todos los módulos.
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
+            El rol efectivo determina sus permisos: <strong>Lector</strong> y{' '}
+            <strong>Revisor</strong> consultan; <strong>Ingeniero de IA</strong> y{' '}
+            <strong>Administrador</strong> crean y entrenan.
           </div>
         </div>
       ),
@@ -75,7 +76,27 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
       actionTab: 'projects' as NavTab,
     },
     {
-      title: '2. Fundamentos y diseñador',
+      title: '2. Conjuntos de datos verificados',
+      subtitle: 'Validación de esquema, columna objetivo y checksum',
+      icon: Database,
+      badge: 'Módulo 05',
+      content: (
+        <div className="space-y-2.5 text-xs text-zinc-700 dark:text-white/70">
+          <p>
+            Cargue su archivo CSV indicando la columna objetivo. El servidor valida tipos,
+            partición determinista 70/15/15 y genera checksum SHA-256. Al terminar, la app abre el
+            diseñador con ese dataset ya seleccionado.
+          </p>
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
+            La partición previene la fuga de datos al calcular escaladores y medias solo con Train.
+          </div>
+        </div>
+      ),
+      actionLabel: 'Ir a Conjuntos de datos',
+      actionTab: 'datasets' as NavTab,
+    },
+    {
+      title: '3. Fundamentos y diseñador',
       subtitle: 'Topologías neuronales y validación dimensional',
       icon: Cpu,
       badge: 'Módulos 03–04',
@@ -83,9 +104,10 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
         <div className="space-y-2.5 text-xs text-zinc-700 dark:text-white/70">
           <p>
             Diseñe y configure su red neuronal. La API valida las dimensiones de tensores y la
-            compatibilidad de capas en tiempo real antes de guardar.
+            compatibilidad de capas en tiempo real antes de guardar. Al guardar, la app lleva a
+            Entrenamientos con la arquitectura y el dataset preseleccionados.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
             Entrenamiento habilitado para arquitecturas <strong>Feedforward (MLP)</strong>,{' '}
             <strong>RNN (LSTM/GRU)</strong> y <strong>CNN (1D)</strong> con workers aislados.
           </div>
@@ -95,27 +117,8 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
       actionTab: 'architectures' as NavTab,
     },
     {
-      title: '3. Conjuntos de datos verificados',
-      subtitle: 'Validación de esquema, columna objetivo y checksum',
-      icon: Database,
-      badge: 'Módulo 05',
-      content: (
-        <div className="space-y-2.5 text-xs text-zinc-700 dark:text-white/70">
-          <p>
-            Cargue su archivo CSV indicando la columna objetivo. El servidor valida tipos,
-            partición determinista 70/15/15 y genera checksum SHA-256.
-          </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
-            La partición previene la fuga de datos al calcular escaladores y medias solo con Train.
-          </div>
-        </div>
-      ),
-      actionLabel: 'Ir a Conjuntos de datos',
-      actionTab: 'datasets' as NavTab,
-    },
-    {
       title: '4. Entrenamiento y telemetría',
-      subtitle: 'Cola Redis, worker Keras y SSE con replay',
+      subtitle: 'Cola de trabajos, worker Keras y SSE con replay',
       icon: PlayCircle,
       badge: 'Módulo 06',
       content: (
@@ -124,8 +127,8 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
             Lance trabajos asíncronos y supervise la curva de pérdida y exactitud en tiempo real
             vía Server-Sent Events con reconexión automática.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
-            Si cierra el navegador, el entrenamiento continúa y se recupera desde PostgreSQL.
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
+            Si cierra el navegador, el entrenamiento continúa y se recupera desde Supabase.
           </div>
         </div>
       ),
@@ -143,7 +146,7 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
             Inspeccione la matriz de confusión térmica, compare versiones, apruebe modelos
             para producción y ejecute predicciones individuales o por archivo CSV.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
             Descargue artefactos <code>.keras</code> y use fragmentos de código cURL, Python y Node.js.
           </div>
         </div>
@@ -162,7 +165,7 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
             Ajuste pesos, sesgo y funciones de activación para visualizar el grafo sináptico, la
             curva de activación, la frontera de decisión 2D y el gradiente $f'(z)$.
           </p>
-          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-[11px]">
+          <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-zinc-200/80 dark:border-white/10 text-zinc-800 dark:text-white/80 text-xs">
             Todos los cálculos se actualizan reactivamente en tiempo real.
           </div>
         </div>
@@ -200,7 +203,7 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
           <p className="font-semibold text-zinc-900 dark:text-white leading-tight">
             Guía · Paso {currentStep + 1}/{steps.length}
           </p>
-          <p className="text-[10px] text-zinc-500 dark:text-white/50 truncate max-w-[160px]">
+          <p className="text-xs text-zinc-500 dark:text-white/65 truncate max-w-[160px]">
             {step.title}
           </p>
         </div>
@@ -263,17 +266,17 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-300 font-semibold border border-rose-500/20">
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-300 font-semibold border border-rose-500/20">
               {step.badge}
             </span>
-            <span className="text-[11px] text-zinc-500 dark:text-white/40">
+            <span className="text-xs text-zinc-500 dark:text-white/65">
               Paso {currentStep + 1} de {steps.length}
             </span>
           </div>
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mt-1 leading-snug">
             {step.title}
           </h2>
-          <p className="text-[11px] text-zinc-500 dark:text-white/50">{step.subtitle}</p>
+          <p className="text-xs text-zinc-500 dark:text-white/65">{step.subtitle}</p>
         </div>
       </div>
 
@@ -283,9 +286,9 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({ onNavigateTa
         <button
           onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
           disabled={currentStep === 0}
-          className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
+          className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
             currentStep === 0
-              ? 'opacity-30 cursor-not-allowed text-zinc-400 dark:text-white/40'
+              ? 'opacity-30 cursor-not-allowed text-zinc-400 dark:text-white/65'
               : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10'
           }`}
         >

@@ -20,13 +20,33 @@ import {
   EmptyBlock,
   ErrorBlock,
   LoadingBlock,
-  ProjectRequired,
+  ProjectRequiredPage,
 } from '../../components/common/ProjectGuard';
 import { formatDateTime, formatMetric, formatNumber, formatPercent, shortId } from '../../lib/format';
+import { MODEL_STATUS_LABELS, labelFor } from '../../lib/labels';
 import { ModelVersion } from '../../types';
 
 function metricValue(value?: number | null) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+const MODEL_STATUS_STYLES: Record<string, string> = {
+  DRAFT: 'border-zinc-500/35 text-zinc-700 dark:text-zinc-200 bg-zinc-500/10',
+  REVIEWED: 'border-sky-500/35 text-sky-700 dark:text-sky-300 bg-sky-500/10',
+  APPROVED: 'border-emerald-500/35 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10',
+  RETIRED: 'border-amber-500/35 text-amber-700 dark:text-amber-300 bg-amber-500/10',
+};
+
+function ModelStatusPill({ status }: { status: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+        MODEL_STATUS_STYLES[status] ?? MODEL_STATUS_STYLES.DRAFT
+      }`}
+    >
+      {labelFor(MODEL_STATUS_LABELS, status)}
+    </span>
+  );
 }
 
 interface ConfusionMatrixProps {
@@ -37,16 +57,23 @@ interface ConfusionMatrixProps {
 
 function ConfusionMatrix({ matrix, labels, large = false }: ConfusionMatrixProps) {
   const max = Math.max(1, ...matrix.flat());
+  const total = matrix.flat().reduce((sum, value) => sum + value, 0);
+  const correct = matrix.reduce((sum, row, index) => sum + (row[index] ?? 0), 0);
+  const wrong = Math.max(0, total - correct);
+
   return (
     <div className="overflow-auto">
-      <table className="w-full text-center text-xs font-mono border-separate border-spacing-1">
+      <table className="w-full text-center text-sm font-mono border-separate border-spacing-1">
+        <caption className="sr-only">
+          Matriz de confusión: filas reales, columnas predichas. Verde para aciertos y rojo para errores.
+        </caption>
         <thead>
-          <tr className="text-zinc-500 dark:text-white/40">
-            <th className="p-1.5 text-left font-sans font-medium text-[10px] uppercase tracking-wider">
-              Real \ Pred
+          <tr className="text-zinc-600 dark:text-white/65">
+            <th scope="col" className="p-1.5 text-left font-sans font-medium text-xs uppercase tracking-wider">
+              Real \ Pred.
             </th>
             {labels.map((label, index) => (
-              <th key={`${label}-${index}`} className="p-1.5 font-medium text-[10px]">
+              <th key={`${label}-${index}`} scope="col" className="p-1.5 font-medium text-xs">
                 {String(label)}
               </th>
             ))}
@@ -55,7 +82,10 @@ function ConfusionMatrix({ matrix, labels, large = false }: ConfusionMatrixProps
         <tbody>
           {matrix.map((row, rowIndex) => (
             <tr key={rowIndex}>
-              <th className="p-1.5 text-left font-sans font-medium text-[10px] text-zinc-700 dark:text-white/70 whitespace-nowrap">
+              <th
+                scope="row"
+                className="p-1.5 text-left font-sans font-medium text-xs text-zinc-700 dark:text-white/75 whitespace-nowrap"
+              >
                 {String(labels[rowIndex] ?? rowIndex)}
               </th>
               {row.map((value, colIndex) => {
@@ -66,18 +96,21 @@ function ConfusionMatrix({ matrix, labels, large = false }: ConfusionMatrixProps
                     key={colIndex}
                     className={`p-2 rounded-lg font-semibold ${
                       correctlyClassified
-                        ? 'text-zinc-900 dark:text-white'
-                        : 'text-zinc-500 dark:text-white/45'
+                        ? 'text-emerald-950 dark:text-emerald-50'
+                        : 'text-rose-950 dark:text-rose-50'
                     }`}
                     style={{
                       backgroundColor: correctlyClassified
-                        ? `rgba(225, 29, 72, ${0.2 + intensity * 0.65})`
-                        : `rgba(120, 120, 130, ${0.05 + intensity * 0.25})`,
-                      boxShadow: correctlyClassified && intensity > 0.3
-                        ? '0 0 12px rgba(225, 29, 72, 0.35)'
-                        : 'none',
+                        ? `rgba(16, 185, 129, ${0.18 + intensity * 0.52})`
+                        : `rgba(244, 63, 94, ${0.08 + intensity * 0.42})`,
+                      boxShadow:
+                        value > 0
+                          ? correctlyClassified
+                            ? '0 0 10px rgba(16, 185, 129, 0.25)'
+                            : '0 0 10px rgba(244, 63, 94, 0.20)'
+                          : 'none',
                     }}
-                    title={`Real ${labels[rowIndex]} → Predicho ${labels[colIndex]}: ${value}`}
+                    title={`Real ${labels[rowIndex]} → Predicho ${labels[colIndex]}: ${formatNumber(value)}`}
                   >
                     {formatNumber(value)}
                   </td>
@@ -87,10 +120,25 @@ function ConfusionMatrix({ matrix, labels, large = false }: ConfusionMatrixProps
           ))}
         </tbody>
       </table>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-2 text-xs text-zinc-700 dark:text-white/70">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-emerald-500/70 border border-emerald-600/50" aria-hidden="true" />
+          Aciertos: <strong className="font-mono">{formatNumber(correct)}</strong>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-rose-500/70 border border-rose-600/50" aria-hidden="true" />
+          Errores: <strong className="font-mono">{formatNumber(wrong)}</strong>
+        </span>
+        <span className="text-zinc-600 dark:text-white/65">
+          Total de prueba: <strong className="font-mono">{formatNumber(total)}</strong>
+        </span>
+      </div>
+
       {large && (
-        <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-2">
-          Diagonal principal = clasificaciones correctas. Total de muestras de prueba:{' '}
-          {formatNumber(matrix.flat().reduce((sum, value) => sum + value, 0))}.
+        <p className="text-xs text-zinc-600 dark:text-white/65 mt-2 leading-relaxed">
+          La diagonal principal son las clasificaciones correctas. Las celdas fuera de la diagonal
+          son errores del modelo sobre el conjunto de prueba reservado.
         </p>
       )}
     </div>
@@ -165,7 +213,13 @@ export const EvaluationView: React.FC = () => {
 
   if (!activeProject) {
     return (
-      <ProjectRequired action="Seleccione un proyecto para consultar las métricas de sus modelos." />
+      <ProjectRequiredPage
+        icon={LineChart}
+        eyebrow="Módulo 07 • Evaluación & Métricas"
+        title="Rendimiento y referencias del modelo"
+        description="Resultados calculados por el worker sobre el conjunto de prueba reservado (15%). No se generan métricas ni curvas sintéticas en el cliente."
+        action="Seleccione un proyecto para consultar las métricas de sus modelos."
+      />
     );
   }
 
@@ -181,9 +235,9 @@ export const EvaluationView: React.FC = () => {
             Evaluación & Métricas
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
-            Rendimiento & Benchmarks del Modelo
+            Rendimiento y referencias del modelo
           </h1>
-          <p className="text-xs text-zinc-600 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-600 dark:text-white/65 mt-0.5">
             Resultados calculados por el worker sobre el conjunto de prueba reservado (15%). No se
             generan métricas ni curvas sintéticas en el cliente.
           </p>
@@ -210,67 +264,65 @@ export const EvaluationView: React.FC = () => {
 
       {selectedModel && (
         <>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-600 dark:text-white/60">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-white/60">
             <span className="font-medium">Versión evaluada:</span>
             <span className="font-mono px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-900 dark:text-white">
               {selectedModel.version}
             </span>
-            <span className="font-mono text-[10px] text-zinc-500 dark:text-white/40">
+            <span className="font-mono text-xs text-zinc-500 dark:text-white/65">
               job {shortId(selectedModel.jobId, 12)}
             </span>
-            <span className="font-mono text-[10px] px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10">
-              {selectedModel.status}
-            </span>
+            <ModelStatusPill status={selectedModel.status} />
           </div>
 
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="glass-card p-4 rounded-2xl">
-              <span className="text-[11px] text-zinc-500 dark:text-white/50 font-medium">
-                {isRegression ? 'R² Score' : 'Test Accuracy'}
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-medium">
+                {isRegression ? 'Coeficiente R²' : 'Exactitud en prueba'}
               </span>
               <div className="text-xl font-bold text-zinc-900 dark:text-white font-mono mt-1">
                 {isRegression ? formatMetric(r2, 3) : formatPercent(accuracy)}
               </div>
-              <span className="text-[10px] text-zinc-500 dark:text-white/40">
+              <span className="text-xs text-zinc-500 dark:text-white/65">
                 {metrics ? `Calculado sobre ${formatNumber(metrics.samplesTest)} muestras` : 'Sin datos'}
               </span>
             </div>
 
             <div className="glass-card p-4 rounded-2xl">
-              <span className="text-[11px] text-zinc-500 dark:text-white/50 font-medium">
-                Test Loss
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-medium">
+                Pérdida en prueba
               </span>
               <div className="text-xl font-bold text-zinc-900 dark:text-white font-mono mt-1">
                 {formatMetric(loss)}
               </div>
-              <span className="text-[10px] text-zinc-500 dark:text-white/40">
+              <span className="text-xs text-zinc-500 dark:text-white/65">
                 Función de coste final
               </span>
             </div>
 
             <div className="glass-card p-4 rounded-2xl">
-              <span className="text-[11px] text-zinc-500 dark:text-white/50 font-medium">
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-medium">
                 {isRegression ? 'RMSE' : 'F1-Score'}
               </span>
               <div className="text-xl font-bold text-zinc-900 dark:text-white font-mono mt-1">
                 {isRegression ? formatMetric(rmse) : formatMetric(f1, 3)}
               </div>
-              <span className="text-[10px] text-zinc-500 dark:text-white/40">
+              <span className="text-xs text-zinc-500 dark:text-white/65">
                 {isRegression ? 'Error cuadrático medio' : 'Media armónica ponderada'}
               </span>
             </div>
 
             <div className="glass-card p-4 rounded-2xl">
-              <span className="text-[11px] text-zinc-500 dark:text-white/50 font-medium">
-                {isRegression ? 'MAE' : 'Precision / Recall'}
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-medium">
+                {isRegression ? 'MAE' : 'Precisión / Exhaustividad'}
               </span>
               <div className="text-xl font-bold text-zinc-900 dark:text-white font-mono mt-1">
                 {isRegression
                   ? formatMetric(mae)
                   : `${formatMetric(precision, 2)} / ${formatMetric(recall, 2)}`}
               </div>
-              <span className="text-[10px] text-zinc-500 dark:text-white/40">
+              <span className="text-xs text-zinc-500 dark:text-white/65">
                 {isRegression ? 'Error absoluto medio' : 'Sobre la clase positiva / ponderado'}
               </span>
             </div>
@@ -285,7 +337,7 @@ export const EvaluationView: React.FC = () => {
                     <Award className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Versiones
                     registradas
                   </h2>
-                  <span className="text-[10px] text-zinc-500 dark:text-white/40 font-mono">
+                  <span className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                     {models.length} versiones
                   </span>
                 </div>
@@ -293,13 +345,13 @@ export const EvaluationView: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+                      <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                         <th className="pb-2.5 font-medium">Versión</th>
                         <th className="pb-2.5 font-medium">Estado</th>
                         <th className="pb-2.5 font-medium">
-                          {isRegression ? 'R²' : 'Test Acc'}
+                          {isRegression ? 'R²' : 'Exactitud de prueba'}
                         </th>
-                        <th className="pb-2.5 font-medium">Test Loss</th>
+                        <th className="pb-2.5 font-medium">Pérdida en prueba</th>
                         <th className="pb-2.5 font-medium">{isRegression ? 'RMSE' : 'F1'}</th>
                         <th className="pb-2.5 font-medium">Registrado</th>
                       </tr>
@@ -326,15 +378,13 @@ export const EvaluationView: React.FC = () => {
                             <td className="py-3 font-sans font-medium text-zinc-900 dark:text-white">
                               {model.version}
                               {model.id === bestId && (
-                                <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full glass-inset text-zinc-800 dark:text-white border border-black/10 dark:border-white/15">
-                                  Mejor métrica
+                                <span className="ml-2 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-semibold">
+                                  <Award className="w-3 h-3" aria-hidden="true" /> Mejor métrica
                                 </span>
                               )}
                             </td>
                             <td className="py-3 font-sans">
-                              <span className="text-[10px] px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/70 border border-black/10 dark:border-white/10">
-                                {model.status}
-                              </span>
+                              <ModelStatusPill status={model.status} />
                             </td>
                             <td className="py-3 text-zinc-900 dark:text-white/90">
                               {rowMetrics?.task === 'regression' || rowR2 != null
@@ -349,7 +399,7 @@ export const EvaluationView: React.FC = () => {
                                 ? formatMetric(rowRmse)
                                 : formatMetric(rowF1, 3)}
                             </td>
-                            <td className="py-3 text-[10px] text-zinc-500 dark:text-white/45 whitespace-nowrap">
+                            <td className="py-3 text-xs text-zinc-500 dark:text-white/65 whitespace-nowrap">
                               {formatDateTime(model.createdAt)}
                             </td>
                           </tr>
@@ -365,18 +415,18 @@ export const EvaluationView: React.FC = () => {
                   <Info className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Trazabilidad de
                   la evaluación
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-600 dark:text-white/60">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-zinc-600 dark:text-white/60">
                   <div className="p-2.5 rounded-xl glass-inset border border-black/10 dark:border-white/10">
-                    <span className="block text-[9px] uppercase tracking-wider text-zinc-500 dark:text-white/40">
+                    <span className="block text-xs uppercase tracking-wider text-zinc-500 dark:text-white/65">
                       Checksum del artefacto
                     </span>
-                    <code className="font-mono text-[10px] break-all text-zinc-800 dark:text-white/80">
+                    <code className="font-mono text-xs break-all text-zinc-800 dark:text-white/80">
                       {selectedModel.checksum}
                     </code>
                   </div>
                   <div className="p-2.5 rounded-xl glass-inset border border-black/10 dark:border-white/10 space-y-1">
                     <div className="flex justify-between">
-                      <span>Dataset version</span>
+                      <span>Versión del conjunto de datos</span>
                       <span className="font-mono text-zinc-900 dark:text-white">
                         {metrics?.datasetVersion || '—'}
                       </span>
@@ -395,7 +445,7 @@ export const EvaluationView: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <p className="text-zinc-600 dark:text-white/50 leading-relaxed pt-1">
+                <p className="text-zinc-600 dark:text-white/65 leading-relaxed pt-1">
                   Estas métricas provienen de <code>metrics_summary</code> almacenado al finalizar el
                   trabajo. Si falta una métrica, significa que el worker no la calculó para esa tarea
                   (por ejemplo, F1 no aplica a regresión).
@@ -405,9 +455,9 @@ export const EvaluationView: React.FC = () => {
 
             {/* Right dock */}
             <div className="space-y-3.5">
-              <div className="text-xs font-medium text-zinc-600 dark:text-white/50 flex items-center justify-between px-1">
+              <div className="text-xs font-medium text-zinc-600 dark:text-white/65 flex items-center justify-between px-1">
                 <span>Resultados de prueba</span>
-                <span className="text-[10px] text-zinc-800 dark:text-white/70">
+                <span className="text-xs text-zinc-800 dark:text-white/70">
                   {matrix ? 'Clic para ampliar' : 'Sin matriz'}
                 </span>
               </div>
@@ -423,14 +473,14 @@ export const EvaluationView: React.FC = () => {
                     <Target className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Matriz de
                     confusión
                   </span>
-                  {matrix && <Maximize2 className="w-3 h-3 text-zinc-400 dark:text-white/40" />}
+                  {matrix && <Maximize2 className="w-3 h-3 text-zinc-400 dark:text-white/65" />}
                 </div>
 
                 <div className="p-2 glass-inset rounded-xl overflow-hidden">
                   {matrix ? (
                     <ConfusionMatrix matrix={matrix} labels={labels} />
                   ) : (
-                    <div className="h-24 flex items-center justify-center text-[11px] text-zinc-500 dark:text-white/40 font-mono text-center px-2">
+                    <div className="h-24 flex items-center justify-center text-xs text-zinc-500 dark:text-white/65 font-mono text-center px-2">
                       {isRegression
                         ? 'No aplica para tareas de regresión'
                         : 'El worker no reportó matriz para esta versión'}
@@ -488,18 +538,16 @@ export const EvaluationView: React.FC = () => {
                     {metrics?.datasetVersion || '—'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-2">
                   <span className="flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Estado
                   </span>
-                  <span className="font-mono text-zinc-900 dark:text-white">
-                    {selectedModel.status}
-                  </span>
+                  <ModelStatusPill status={selectedModel.status} />
                 </div>
               </div>
 
               {!metrics && (
-                <div className="glass-card p-3 rounded-2xl border border-amber-500/25 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                <div className="glass-card p-3 rounded-2xl border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   Esta versión no contiene métricas de evaluación almacenadas.
                 </div>
@@ -521,7 +569,7 @@ export const EvaluationView: React.FC = () => {
             {matrix ? (
               <ConfusionMatrix matrix={matrix} labels={labels} large />
             ) : (
-              <p className="text-xs text-zinc-500 dark:text-white/50">Sin matriz disponible.</p>
+              <p className="text-xs text-zinc-500 dark:text-white/65">Sin matriz disponible.</p>
             )}
           </div>
           <div className="p-3.5 rounded-2xl glass-inset border border-black/10 dark:border-white/10 text-xs text-zinc-600 dark:text-white/60">

@@ -75,7 +75,7 @@ Público. Rate limit por IP: `LOGIN_RATE_LIMIT_PER_MINUTE` (por defecto 10/min) 
 ```json
 {
   "email": "admin@neurolab.enterprise",
-  "password": "Admin123!"
+  "password": "<SEED_ADMIN_PASSWORD>"
 }
 ```
 
@@ -109,7 +109,7 @@ Público. Rate limit por IP: `LOGIN_RATE_LIMIT_PER_MINUTE` (por defecto 10/min) 
 
 ```json
 {
-  "current_password": "Admin123!",
+  "current_password": "<contraseña-actual>",
   "new_password": "NuevaClaveSegura123!"
 }
 ```
@@ -271,7 +271,8 @@ Roles de escritura: `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER`.
 - `201 Created` → `ArchitectureResponse`.
 - `422` si la validación dimensional falla.
 
-Capas soportadas por el validador: `Dense`, `Dropout`, `BatchNormalization`, `Conv2D`, `MaxPooling2D`, `Flatten`, `LSTM`, `GRU`.
+Capas soportadas por el validador: `Dense`, `Dropout`, `BatchNormalization`, `Flatten`, `Conv1D`, `MaxPooling1D`, `Conv2D`, `MaxPooling2D`, `LSTM`, `GRU`, `SimpleRNN`.
+Para entrenamiento tabular se usan `Conv1D`/`MaxPooling1D`; las capas 2D se rechazan en la familia CNN.
 Activaciones: `relu`, `sigmoid`, `tanh`, `softmax`, `linear`, `leaky_relu`, `elu`, `swish`.
 
 ### `GET /projects/{project_id}/architectures/{architecture_id}`
@@ -493,9 +494,25 @@ Errores:
 
 ### `POST /training-jobs/{job_id}/cancel`
 
-Roles de escritura. Marca `cancel_requested=true`, audita `TRAINING_JOB_CANCEL_REQUESTED` y notifica al worker.
+Roles de escritura. El comportamiento depende del estado del trabajo:
 
-`202 Accepted`:
+- `QUEUED`: se cancela de inmediato, sin esperar a un worker, y se retira el
+  descriptor de la cola. La respuesta ya devuelve `status: "CANCELLED"`.
+- `PREPARING` / `RUNNING`: marca `cancel_requested=true`, audita
+  `TRAINING_JOB_CANCEL_REQUESTED` y notifica al worker, que aplica la
+  cancelación al finalizar la época en curso.
+
+`202 Accepted` (trabajo en cola, cancelado al instante):
+
+```json
+{
+  "message": "Trabajo cancelado antes de iniciar.",
+  "status": "CANCELLED",
+  "cancel_requested": true
+}
+```
+
+`202 Accepted` (trabajo en ejecución, cancelación pendiente):
 
 ```json
 {
@@ -506,7 +523,8 @@ Roles de escritura. Marca `cancel_requested=true`, audita `TRAINING_JOB_CANCEL_R
 ```
 
 - `409` si el job ya está `COMPLETED`, `FAILED` o `CANCELLED`.
-- Si la notificación falla, la solicitud queda persistida y el worker la aplica al reconectar.
+- Si la notificación al worker falla, la solicitud queda persistida y el worker
+  la aplica al reconectar.
 
 ---
 
@@ -514,9 +532,25 @@ Roles de escritura. Marca `cancel_requested=true`, audita `TRAINING_JOB_CANCEL_R
 
 ### SSE
 
-`GET /api/v1/training-jobs/{job_id}/events?token=<JWT>`
+El JWT **no** se envía en la URL. Primero se solicita un ticket de un solo uso
+(autenticado con `Authorization: Bearer`):
 
-También acepta `Authorization: Bearer`. Respuesta `text/event-stream` con `Cache-Control: no-cache` y `X-Accel-Buffering: no`.
+`POST /api/v1/training-jobs/{job_id}/events-ticket`
+
+```json
+{
+  "ticket": "u7Y...",
+  "expires_in": 30
+}
+```
+
+Después:
+
+`GET /api/v1/training-jobs/{job_id}/events?ticket=<ticket>`
+
+El ticket caduca a los 30 segundos (configurable con `STREAM_TICKET_TTL_SECONDS`)
+y se invalida al primer uso. También se admite `Authorization: Bearer` sin ticket.
+Respuesta `text/event-stream` con `Cache-Control: no-cache` y `X-Accel-Buffering: no`.
 
 Formato:
 
@@ -530,9 +564,9 @@ data: {...}
 
 ### WebSocket
 
-`WS /api/v1/training-jobs/{job_id}/events/ws?token=<JWT>`
+`WS /api/v1/training-jobs/{job_id}/events/ws?ticket=<ticket>`
 
-Mismo conjunto de eventos como objetos JSON. Códigos de cierre: `4401` no autorizado, `4404` job inexistente, `4400` error inesperado.
+El ticket se obtiene con el mismo `POST .../events-ticket`. Mismo conjunto de eventos como objetos JSON. Códigos de cierre: `4401` no autorizado, `4404` job inexistente, `4400` error inesperado.
 
 ### Tipos de evento
 
@@ -936,9 +970,9 @@ Todos los endpoints requieren rol global `ADMIN`.
 - **Estados de modelo:** `DRAFT`, `REVIEWED`, `APPROVED`, `RETIRED`.
 - **Roles:** `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER`, `REVIEWER`, `VIEWER`.
 - **Roles de escritura:** `ADMIN`, `PROJECT_LEAD`, `AI_ENGINEER`.
-- **Roles de aprobación:** `ADMIN`, `PROJECT_LEAD`.
+- **Roles de aprobación:** `ADMIN`, `PROJECT_LEAD`, `REVIEWER`.
 - **Tareas:** `classification`, `regression`.
-- **Familias:** `FEEDFORWARD`, `RNN`, `CNN`, `GAN` (entrenamiento real sólo `FEEDFORWARD` en el MVP).
+- **Familias:** `FEEDFORWARD`, `RNN`, `CNN`, `GAN` (entrenamiento real para FEEDFORWARD/RNN/CNN; GAN es conceptual).
 - **Fechas:** ISO 8601 con zona horaria (UTC).
 - **IDs:** UUID v4.
 - **Snake_case** en todas las respuestas. El frontend normaliza a camelCase.

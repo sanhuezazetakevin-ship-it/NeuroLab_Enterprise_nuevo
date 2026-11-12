@@ -27,10 +27,12 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
-    await login_rate_limiter.check(request)
+    email = credentials.email.lower()
+    await login_rate_limiter.check(request, email)
 
-    user = await db.scalar(select(UserModel).where(UserModel.email == credentials.email.lower()))
+    user = await db.scalar(select(UserModel).where(UserModel.email == email))
     if not user or not verify_password(credentials.password, user.password_hash):
+        await login_rate_limiter.register_failure(email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
@@ -42,6 +44,7 @@ async def login(credentials: UserLogin, request: Request, db: AsyncSession = Dep
             detail="La cuenta no está activa. Contacte al administrador.",
         )
 
+    await login_rate_limiter.reset_failures(email)
     token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role}
     )

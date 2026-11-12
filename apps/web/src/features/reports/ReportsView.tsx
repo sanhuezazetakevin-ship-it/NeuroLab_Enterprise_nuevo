@@ -371,7 +371,7 @@ export const ReportsView: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Certificación Formal &amp; Trazabilidad de Modelos
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
             Documentación generada exclusivamente a partir de datos persistidos: topología, métricas de
             evaluación y pista de auditoría.
           </p>
@@ -422,7 +422,7 @@ export const ReportsView: React.FC = () => {
         <>
           <div className="glass-card p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
-              <label className="text-zinc-500 dark:text-white/50 font-medium">Versión a certificar:</label>
+              <label className="text-zinc-500 dark:text-white/65 font-medium">Versión a certificar:</label>
               <select
                 value={selectedModelId || ''}
                 onChange={(event) => setSelectedModelId(event.target.value || null)}
@@ -479,9 +479,9 @@ export const ReportsView: React.FC = () => {
                     <ShieldCheck className="w-4 h-4 text-zinc-700 dark:text-white/80" /> NEUROLAB ENTERPRISE • FICHA TÉCNICA
                   </div>
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
-                    MODEL AUDIT CARD
+                    FICHA DE AUDITORÍA DEL MODELO
                   </h2>
-                  <p className="text-zinc-500 dark:text-white/50 mt-0.5">
+                  <p className="text-zinc-500 dark:text-white/65 mt-0.5">
                     Documento generado desde PostgreSQL y el artefacto inmutable del worker.
                   </p>
                 </div>
@@ -489,7 +489,7 @@ export const ReportsView: React.FC = () => {
                   <span className="font-mono text-zinc-900 dark:text-white font-bold px-3 py-1 rounded-full glass-inset border border-black/20 dark:border-white/20">
                     ESTADO: {selectedModel.status}
                   </span>
-                  <p className="text-zinc-500 dark:text-white/40 text-[10px] mt-1.5 font-mono">
+                  <p className="text-zinc-500 dark:text-white/65 text-xs mt-1.5 font-mono">
                     Ref: {reportReference} · Emisión: {formatDateTime(new Date().toISOString())}
                   </p>
                 </div>
@@ -497,25 +497,25 @@ export const ReportsView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl glass-inset border border-black/10 dark:border-white/10">
                 <div>
-                  <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">Proyecto</span>
+                  <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">Proyecto</span>
                   <p className="font-semibold text-zinc-900 dark:text-white mt-0.5">{activeProject.name}</p>
-                  <p className="text-[10px] text-zinc-500 dark:text-white/40 font-mono mt-0.5">
+                  <p className="text-xs text-zinc-500 dark:text-white/65 font-mono mt-0.5">
                     {shortId(activeProject.id, 12)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">Modelo</span>
+                  <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">Modelo</span>
                   <p className="font-semibold text-zinc-900 dark:text-white mt-0.5 font-mono">{selectedModel.version}</p>
-                  <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-0.5">
+                  <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
                     Registrado {formatDateTime(selectedModel.createdAt)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">Job de origen</span>
+                  <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">Trabajo de origen</span>
                   <p className="font-semibold text-zinc-900 dark:text-white mt-0.5 font-mono">
                     {shortId(selectedModel.jobId, 12)}
                   </p>
-                  <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-0.5">
+                  <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
                     {selectedJob ? selectedJob.status : 'No disponible en este proyecto'}
                   </p>
                 </div>
@@ -529,24 +529,24 @@ export const ReportsView: React.FC = () => {
                   {selectedArchitecture ? (
                     <>
                       <p className="text-zinc-900 dark:text-white font-medium">{selectedArchitecture.name}</p>
-                      <p className="text-[11px] text-zinc-500 dark:text-white/50 font-mono">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                         {selectedArchitecture.family} · config v{selectedArchitecture.version}
                       </p>
-                      <p className="text-[11px] text-zinc-500 dark:text-white/50 font-mono">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                         Entrada [{selectedArchitecture.config.inputShape.join(', ')}]
                       </p>
                       {validation?.totalParameters != null && (
-                        <p className="text-[11px] text-zinc-500 dark:text-white/50 font-mono">
+                        <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                           {formatNumber(validation.totalParameters)} parámetros totales ·{' '}
                           {formatNumber(validation.trainableParameters)} entrenables
                         </p>
                       )}
                       {validationError && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-300">{validationError}</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-300">{validationError}</p>
                       )}
                     </>
                   ) : (
-                    <p className="text-[11px] text-zinc-500 dark:text-white/40">
+                    <p className="text-xs text-zinc-500 dark:text-white/65">
                       Arquitectura no disponible para este job.
                     </p>
                   )}
@@ -554,25 +554,25 @@ export const ReportsView: React.FC = () => {
 
                 <div className="p-4 rounded-2xl glass-inset border border-black/10 dark:border-white/10 space-y-1">
                   <div className="flex items-center gap-2 text-zinc-700 dark:text-white/70 font-semibold">
-                    <Database className="w-3.5 h-3.5" /> Dataset de referencia
+                    <Database className="w-3.5 h-3.5" /> Conjunto de datos de referencia
                   </div>
                   {selectedDataset ? (
                     <>
                       <p className="text-zinc-900 dark:text-white font-medium">{selectedDataset.name}</p>
-                      <p className="text-[11px] text-zinc-500 dark:text-white/50 font-mono">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                         versión {selectedDataset.version} · {formatNumber(selectedDataset.metadata.samples)} muestras
                       </p>
-                      <p className="text-[11px] text-zinc-500 dark:text-white/50 font-mono">
-                        target: {selectedDataset.targetColumn || selectedDataset.metadata.targetColumn || '—'} ·{' '}
+                      <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
+                        objetivo: {selectedDataset.targetColumn || selectedDataset.metadata.targetColumn || '—'} ·{' '}
                         {selectedDataset.metadata.task || '—'}
                       </p>
-                      <p className="text-[10px] text-zinc-500 dark:text-white/40 font-mono break-all">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 font-mono break-all">
                         SHA-256: {selectedDataset.checksum || '—'}
                       </p>
                     </>
                   ) : (
-                    <p className="text-[11px] text-zinc-500 dark:text-white/40">
-                      Dataset no disponible para este job.
+                    <p className="text-xs text-zinc-500 dark:text-white/65">
+                      Conjunto de datos no disponible para este trabajo.
                     </p>
                   )}
                 </div>
@@ -580,10 +580,10 @@ export const ReportsView: React.FC = () => {
 
               {includeTopology && selectedArchitecture && (
                 <div className="space-y-2">
-                  <span className="text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-zinc-600 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                     1. Especificación de la topología compilada
                   </span>
-                  <div className="p-4 glass-inset rounded-2xl border border-black/10 dark:border-white/10 font-mono text-[11px] space-y-1.5 text-zinc-800 dark:text-white/80">
+                  <div className="p-4 glass-inset rounded-2xl border border-black/10 dark:border-white/10 font-mono text-xs space-y-1.5 text-zinc-800 dark:text-white/80">
                     <div>• Tensor de entrada: [{selectedArchitecture.config.inputShape.join(', ')}]</div>
                     {describeLayers(selectedArchitecture).map((line) => (
                       <div key={line} className="text-zinc-700 dark:text-white/70">
@@ -602,11 +602,11 @@ export const ReportsView: React.FC = () => {
 
               {includeMetrics && (
                 <div className="space-y-2">
-                  <span className="text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-zinc-600 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                     2. Resultados de evaluación persistidos
                   </span>
                   {metrics.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 dark:text-white/40 flex items-center gap-1.5">
+                    <p className="text-xs text-zinc-500 dark:text-white/65 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" /> Esta versión no registra métricas de evaluación.
                     </p>
                   ) : (
@@ -616,7 +616,7 @@ export const ReportsView: React.FC = () => {
                           key={entry.label}
                           className="p-3.5 glass-inset rounded-2xl border border-black/10 dark:border-white/10"
                         >
-                          <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold tracking-wider">
+                          <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                             {entry.label}
                           </span>
                           <p className="font-semibold text-zinc-900 dark:text-white font-mono text-base mt-1">
@@ -631,18 +631,18 @@ export const ReportsView: React.FC = () => {
 
               {includeTopology && selectedArchitecture && selectedArchitecture.config.layers.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-zinc-600 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                     3. Hiperparámetros del trabajo
                   </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     {[
                       ['Épocas', selectedJob?.hyperparameters.epochs],
-                      ['Batch size', selectedJob?.hyperparameters.batchSize],
+                      ['Tamaño de lote', selectedJob?.hyperparameters.batchSize],
                       ['Optimizador', selectedJob?.hyperparameters.optimizer],
-                      ['Learning rate', selectedJob?.hyperparameters.learningRate],
+                      ['Tasa de aprendizaje', selectedJob?.hyperparameters.learningRate],
                     ].map(([label, value]) => (
                       <div key={String(label)} className="p-2.5 glass-inset rounded-xl">
-                        <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold">
+                        <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold">
                           {label}
                         </span>
                         <p className="font-mono font-semibold text-zinc-900 dark:text-white mt-0.5">
@@ -656,22 +656,22 @@ export const ReportsView: React.FC = () => {
 
               {includeAudit && (
                 <div className="space-y-2 pt-2 border-t border-black/10 dark:border-white/10">
-                  <span className="text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-zinc-600 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                     4. Trazabilidad inmutable &amp; auditoría
                   </span>
-                  <div className="p-3.5 glass-inset rounded-2xl border border-black/10 dark:border-white/10 font-mono text-[11px] text-zinc-800 dark:text-white/70 break-all flex items-start gap-2">
+                  <div className="p-3.5 glass-inset rounded-2xl border border-black/10 dark:border-white/10 font-mono text-xs text-zinc-800 dark:text-white/70 break-all flex items-start gap-2">
                     <FileCheck2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>Checksum SHA-256 del artefacto: {selectedModel.checksum}</span>
                   </div>
                   {relatedAudit.length === 0 ? (
-                    <p className="text-[10px] text-zinc-500 dark:text-white/40">
+                    <p className="text-xs text-zinc-500 dark:text-white/65">
                       No hay eventos de auditoría asociados a este modelo en el proyecto.
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[11px] font-mono">
+                      <table className="w-full text-left text-xs font-mono">
                         <thead>
-                          <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40 font-sans">
+                          <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65 font-sans">
                             <th className="pb-2 font-medium">Fecha</th>
                             <th className="pb-2 font-medium">Actor</th>
                             <th className="pb-2 font-medium">Acción</th>
@@ -680,7 +680,7 @@ export const ReportsView: React.FC = () => {
                         <tbody className="divide-y divide-black/5 dark:divide-white/5">
                           {relatedAudit.map((event) => (
                             <tr key={event.id}>
-                              <td className="py-1.5 text-zinc-500 dark:text-white/50 font-sans">
+                              <td className="py-1.5 text-zinc-500 dark:text-white/65 font-sans">
                                 {formatDateTime(event.createdAt)}
                               </td>
                               <td className="py-1.5 text-zinc-700 dark:text-white/70">
@@ -693,7 +693,7 @@ export const ReportsView: React.FC = () => {
                       </table>
                     </div>
                   )}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] text-zinc-500 dark:text-white/40 pt-1 gap-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-zinc-500 dark:text-white/65 pt-1 gap-1">
                     <span>
                       Generado por {user?.displayName || user?.email || 'usuario autenticado'} · NeuroLab Enterprise
                     </span>
@@ -713,7 +713,7 @@ export const ReportsView: React.FC = () => {
       )}
 
       {!loading && models.length > 0 && selectedJob && (
-        <div className="glass-card p-4 rounded-2xl flex flex-wrap items-center gap-4 text-[11px] text-zinc-500 dark:text-white/50">
+        <div className="glass-card p-4 rounded-2xl flex flex-wrap items-center gap-4 text-xs text-zinc-500 dark:text-white/65">
           <span className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5" /> Job {shortId(selectedJob.id, 12)} · {selectedJob.status}
           </span>

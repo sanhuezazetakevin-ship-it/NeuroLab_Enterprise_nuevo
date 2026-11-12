@@ -38,6 +38,11 @@ class TrainingOrchestrator:
         await training_queue.request_cancel(str(job_id))
         return True
 
+    async def discard_job(self, job_id: UUID) -> bool:
+        """Quita de la cola un trabajo cancelado antes de ser reclamado."""
+        await training_queue.discard_job(str(job_id))
+        return True
+
 
 training_orchestrator = TrainingOrchestrator()
 __all__ = ["TrainingOrchestrator", "training_orchestrator", "QueueUnavailableError"]

@@ -16,11 +16,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal, get_db
-from app.core.deps import WRITE_ROLES, ensure_project_role, get_current_user, get_user_from_token, project_access
+from app.core.deps import WRITE_ROLES, ensure_project_role, get_current_user, project_access
 from app.core.security import decode_access_token
 from app.modules.architectures.validator import ArchitectureValidator
 from app.modules.audit.service import record_audit
+from app.modules.security.stream_tickets import consume_stream_ticket, issue_stream_ticket
 from app.modules.training.events import (
     format_sse,
     job_snapshot,
@@ -45,14 +47,36 @@ ACTIVE_STATES = {"QUEUED", "PREPARING", "RUNNING"}
 TERMINAL_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 
 
-async def _serialize_job(db: AsyncSession, job: TrainingJobModel) -> TrainingJobResponse:
+async def _metrics_by_job(
+    db: AsyncSession, job_ids: List[UUID]
+) -> dict[UUID, List[dict]]:
+    """Carga las métricas de varios trabajos en una sola consulta.
+
+    Evita el N+1 del listado: antes se lanzaba una consulta por cada trabajo.
+    """
+    if not job_ids:
+        return {}
     rows = (
         await db.scalars(
             select(TrainingMetricModel)
-            .where(TrainingMetricModel.job_id == job.id)
+            .where(TrainingMetricModel.job_id.in_(job_ids))
             .order_by(TrainingMetricModel.epoch, TrainingMetricModel.metric_name)
         )
     ).all()
+    grouped: dict[UUID, List[TrainingMetricModel]] = {}
+    for row in rows:
+        grouped.setdefault(row.job_id, []).append(row)
+    return {job_id: metric_rows_to_history(items) for job_id, items in grouped.items()}
+
+
+async def _serialize_job(
+    db: AsyncSession,
+    job: TrainingJobModel,
+    metrics: Optional[List[dict]] = None,
+) -> TrainingJobResponse:
+    history = metrics
+    if history is None:
+        history = (await _metrics_by_job(db, [job.id])).get(job.id, [])
     return TrainingJobResponse(
         id=job.id,
         project_id=job.project_id,
@@ -66,7 +90,7 @@ async def _serialize_job(db: AsyncSession, job: TrainingJobModel) -> TrainingJob
         ended_at=job.ended_at,
         error_message=job.error_message,
         created_at=job.created_at,
-        metrics=metric_rows_to_history(list(rows)),
+        metrics=history,
     )
 
 
@@ -96,7 +120,11 @@ async def list_training_jobs(
             .order_by(TrainingJobModel.created_at.desc())
         )
     ).all()
-    return [await _serialize_job(db, job) for job in jobs]
+    metrics_by_job = await _metrics_by_job(db, [job.id for job in jobs])
+    return [
+        await _serialize_job(db, job, metrics_by_job.get(job.id, []))
+        for job in jobs
+    ]
 
 
 @router.post(
@@ -286,10 +314,40 @@ async def cancel_training_job(
     job, _ = await _job_with_access(db, job_id, user, write=True)
     if job.status in TERMINAL_STATES:
         raise HTTPException(status_code=409, detail="El trabajo ya finalizó")
-    if job.cancel_requested:
-        return {"message": "La cancelación ya fue solicitada", "status": job.status}
+    if job.cancel_requested and job.status != "QUEUED":
+        return {
+            "message": "La cancelación ya fue solicitada",
+            "status": job.status,
+            "cancel_requested": True,
+        }
 
     job.cancel_requested = True
+
+    if job.status == "QUEUED":
+        # Aún no lo reclamó el worker: se cancela de inmediato. Antes quedaba
+        # "En cola" indefinidamente si no había un worker activo que aplicara
+        # la solicitud.
+        job.status = "CANCELLED"
+        job.ended_at = datetime.now(timezone.utc)
+        await record_audit(
+            db,
+            actor_id=user.id,
+            action="TRAINING_JOB_CANCELLED",
+            project_id=job.project_id,
+            metadata={"job_id": str(job.id), "reason": "Cancelado antes de iniciar"},
+        )
+        await db.commit()
+        try:
+            await training_orchestrator.discard_job(job.id)
+        except QueueUnavailableError as exc:
+            job.error_message = f"Cancelado; limpieza de cola pendiente: {exc}"
+            await db.commit()
+        return {
+            "message": "Trabajo cancelado antes de iniciar.",
+            "status": "CANCELLED",
+            "cancel_requested": True,
+        }
+
     await record_audit(
         db,
         actor_id=user.id,
@@ -326,14 +384,40 @@ async def _event_user(request: Request, token: Optional[str], db: AsyncSession) 
     return user
 
 
+async def _ticket_user(ticket: str, job_id: UUID, db: AsyncSession) -> UserModel:
+    payload = await consume_stream_ticket(ticket=ticket, job_id=str(job_id))
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Ticket de eventos inválido, expirado o ya utilizado",
+        )
+    try:
+        user_id = UUID(str(payload["user_id"]))
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Ticket de eventos inválido")
+    user = await db.get(UserModel, user_id)
+    if not user or user.status != "ACTIVE":
+        raise HTTPException(status_code=401, detail="Usuario inválido")
+    return user
+
+
 @router.get("/training-jobs/{job_id}/events")
 async def stream_training_events(
     job_id: UUID,
     request: Request,
-    token: Optional[str] = Query(default=None),
+    ticket: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await _event_user(request, token, db)
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        user = await _event_user(request, None, db)
+    elif ticket:
+        user = await _ticket_user(ticket, job_id, db)
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Se requiere un ticket de eventos o la cabecera Authorization",
+        )
     await _job_with_access(db, job_id, user)
     return StreamingResponse(
         (format_sse(event) async for event in stream_job_events(job_id)),
@@ -346,12 +430,29 @@ async def stream_training_events(
     )
 
 
+@router.post("/training-jobs/{job_id}/events-ticket")
+async def create_training_events_ticket(
+    job_id: UUID,
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Emite un ticket efímero para abrir SSE/WebSocket sin exponer el JWT."""
+    await _job_with_access(db, job_id, user)
+    ticket = await issue_stream_ticket(job_id=str(job_id), user_id=str(user.id))
+    return {
+        "ticket": ticket,
+        "expires_in": max(5, settings.STREAM_TICKET_TTL_SECONDS),
+    }
+
+
 @router.websocket("/training-jobs/{job_id}/events/ws")
-async def websocket_job_events(websocket: WebSocket, job_id: UUID, token: Optional[str] = Query(default=None)):
+async def websocket_job_events(
+    websocket: WebSocket, job_id: UUID, ticket: Optional[str] = Query(default=None)
+):
     await websocket.accept()
     try:
         async with AsyncSessionLocal() as db:
-            user = await get_user_from_token(token or "", db)
+            user = await _ticket_user(ticket or "", job_id, db)
             job = await db.get(TrainingJobModel, job_id)
             if not job:
                 await websocket.close(code=4404)

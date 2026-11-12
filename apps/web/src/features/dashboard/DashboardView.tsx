@@ -66,7 +66,7 @@ function StatusPill({ status }: { status: JobStatus }) {
   const isActive = ACTIVE_STATES.includes(status);
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold glass-inset border ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold glass-inset border ${STATUS_STYLES[status]}`}
     >
       {isActive && <Loader2 className="w-3 h-3 animate-spin" />}
       {status === 'COMPLETED' && <CheckCircle2 className="w-3 h-3" />}
@@ -277,17 +277,17 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
       <div className="glass-card p-6 sm:p-7 rounded-3xl relative overflow-hidden space-y-4 border border-rose-500/15">
         <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-rose-600/10 dark:bg-rose-600/15 blur-3xl pointer-events-none" />
         <div className="flex flex-wrap items-center gap-2 relative z-10">
-          <span className="text-[10px] uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-[0_0_8px_rgba(225,29,72,0.2)]">
+          <span className="text-xs uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-[0_0_8px_rgba(225,29,72,0.2)]">
             Proyecto: {activeProject.name}
           </span>
-          <span className="text-[10px] uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10">
+          <span className="text-xs uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10">
             Rol: {labelFor(ROLE_LABELS, activeProject.effectiveRole || currentRole)}
           </span>
-          <span className="text-[10px] uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10">
+          <span className="text-xs uppercase font-mono tracking-wider px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10">
             Estado: {labelFor(PROJECT_STATUS_LABELS, activeProject.status)}
           </span>
-          <span className="text-[10px] text-zinc-500 dark:text-white/50 font-mono">
-            Semana 11 • Aprendizaje profundo
+          <span className="text-xs text-zinc-600 dark:text-white/65 font-mono">
+            Espacio de trabajo activo
           </span>
         </div>
 
@@ -298,7 +298,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
           <p className="text-xs text-zinc-600 dark:text-white/60 leading-relaxed">
             {activeProject.description || 'Sin descripción registrada para este proyecto.'}
           </p>
-          <p className="text-[11px] text-zinc-500 dark:text-white/40 font-mono">
+          <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
             {projects.length} proyecto(s) accesibles · usuario {user?.displayName || user?.email || '—'} · creado{' '}
             {formatDateTime(activeProject.createdAt)}
           </p>
@@ -353,9 +353,9 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-white">{kpi.value}</div>
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-white/50 mt-1 gap-2">
+                <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-white/65 mt-1 gap-2">
                   <span className="truncate">{kpi.detail}</span>
-                  <span className="font-mono text-zinc-700 dark:text-white/70 text-[10px] shrink-0">{kpi.subtext}</span>
+                  <span className="font-mono text-zinc-700 dark:text-white/70 text-xs shrink-0">{kpi.subtext}</span>
                 </div>
               </div>
             </div>
@@ -391,7 +391,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+                    <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                       <th className="pb-2.5 font-medium">Trabajo</th>
                       <th className="pb-2.5 font-medium">Arquitectura</th>
                       <th className="pb-2.5 font-medium">Conjunto de datos</th>
@@ -409,7 +409,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                             {shortId(job.id, 10)}
                           </td>
                           <td className="py-3 text-zinc-600 dark:text-white/60 max-w-[160px] truncate">
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10 mr-1.5">
+                            <span className="text-xs font-mono px-2 py-0.5 rounded-full glass-inset text-zinc-700 dark:text-white/80 border border-black/10 dark:border-white/10 mr-1.5">
                               {architecture?.family || '—'}
                             </span>
                             {architecture?.name || 'Arquitectura no disponible'}
@@ -420,7 +420,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                           <td className="py-3">
                             <StatusPill status={job.status} />
                           </td>
-                          <td className="py-3 text-zinc-500 dark:text-white/50 font-mono text-[11px] whitespace-nowrap">
+                          <td className="py-3 text-zinc-500 dark:text-white/65 font-mono text-xs whitespace-nowrap">
                             {formatDateTime(job.createdAt)}
                           </td>
                         </tr>
@@ -467,14 +467,14 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                         <span className="font-mono text-xs font-semibold text-zinc-900 dark:text-white">
                           {model.version}
                         </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60">
                           {labelFor(MODEL_STATUS_LABELS, model.status)}
                         </span>
                       </div>
-                      <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-1">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 mt-1">
                         {formatDateTime(model.createdAt)}
                       </p>
-                      <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-zinc-700 dark:text-white/70">
+                      <div className="flex items-center gap-3 mt-2 text-xs font-mono text-zinc-700 dark:text-white/70">
                         {accuracy != null && (
                           <span className="flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" /> {formatPercent(accuracy)}
@@ -502,47 +502,47 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <Server className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Estado de la plataforma
               </span>
               {system && (
-                <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300">
+                <span className="text-xs font-mono text-emerald-700 dark:text-emerald-300">
                   {labelFor(SYSTEM_STATUS_LABELS, system.status)}
                 </span>
               )}
             </div>
 
             {!isAdmin && (
-              <p className="text-[11px] text-zinc-500 dark:text-white/45 leading-relaxed">
+              <p className="text-xs text-zinc-500 dark:text-white/65 leading-relaxed">
                 El estado detallado de base de datos, Redis y cola está restringido al rol ADMIN.
                 Su sesión opera con el rol <strong className="font-mono text-zinc-700 dark:text-white/70">{currentRole}</strong>.
               </p>
             )}
 
             {isAdmin && systemError && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
+              <p className="text-xs text-rose-600 dark:text-rose-300 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {systemError}
               </p>
             )}
 
             {isAdmin && system && (
               <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 dark:text-white/50">Base de datos</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 dark:text-white/65">Base de datos</span>
                   <span className="font-mono text-zinc-800 dark:text-white/80">{system.database}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 dark:text-white/50">Redis</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 dark:text-white/65">Redis</span>
                   <span className="font-mono text-zinc-800 dark:text-white/80">{system.redis}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 dark:text-white/50">Cola de trabajos</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 dark:text-white/65">Cola de trabajos</span>
                   <span className="font-mono text-zinc-800 dark:text-white/80">{system.queueBackend}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 dark:text-white/50">Entorno / versión</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 dark:text-white/65">Entorno / versión</span>
                   <span className="font-mono text-zinc-800 dark:text-white/80">
                     {system.environment} · v{system.version}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 dark:text-white/50">Tiempo activo</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500 dark:text-white/65">Tiempo activo</span>
                   <span className="font-mono text-zinc-800 dark:text-white/80">
                     {uptimeLabel(system.uptimeSeconds)}
                   </span>
@@ -551,7 +551,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                   {Object.entries(system.limits).map(([key, value]) => (
                     <span
                       key={key}
-                      className="text-[9px] font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60"
+                      className="text-xs font-mono px-1.5 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60"
                     >
                       {key}={value}
                     </span>
@@ -559,7 +559,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </div>
                 <button
                   onClick={() => onNavigate('administration')}
-                  className="w-full text-[11px] text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white font-medium pt-1 text-left"
+                  className="w-full text-xs text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white font-medium pt-1 text-left"
                 >
                   Abrir Administración →
                 </button>
@@ -567,7 +567,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
             )}
 
             {isAdmin && !system && !systemError && (
-              <p className="text-[11px] text-zinc-500 dark:text-white/45 flex items-center gap-1.5">
+              <p className="text-xs text-zinc-500 dark:text-white/65 flex items-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Consultando estado…
               </p>
             )}
@@ -580,26 +580,26 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
               </span>
               <button
                 onClick={() => onNavigate('reports')}
-                className="text-[10px] text-zinc-600 dark:text-white/60 hover:text-zinc-900 dark:hover:text-white"
+                className="text-xs text-zinc-600 dark:text-white/60 hover:text-zinc-900 dark:hover:text-white"
               >
                 Ver reportes →
               </button>
             </div>
 
             {recentAudit.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 dark:text-white/45">
+              <p className="text-xs text-zinc-500 dark:text-white/65">
                 Aún no hay eventos de auditoría registrados en este proyecto.
               </p>
             ) : (
               <ul className="space-y-2">
                 {recentAudit.map((event) => (
                   <li key={event.id} className="flex items-start gap-2">
-                    <Radio className="w-3 h-3 mt-0.5 text-zinc-400 dark:text-white/40 shrink-0" />
+                    <Radio className="w-3 h-3 mt-0.5 text-zinc-400 dark:text-white/65 shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-mono text-[10px] text-zinc-800 dark:text-white/80 truncate">
+                      <p className="font-mono text-xs text-zinc-800 dark:text-white/80 truncate">
                         {event.action}
                       </p>
-                      <p className="text-[10px] text-zinc-500 dark:text-white/40 truncate">
+                      <p className="text-xs text-zinc-500 dark:text-white/65 truncate">
                         {event.actorName || shortId(event.actorId, 8)} · {formatDateTime(event.createdAt)}
                       </p>
                     </div>
@@ -613,7 +613,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate }) => {
             <span className="font-medium text-zinc-900 dark:text-white/90 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Flujo MVP verificado
             </span>
-            <p className="text-[11px] text-zinc-500 dark:text-white/45 leading-relaxed">
+            <p className="text-xs text-zinc-500 dark:text-white/65 leading-relaxed">
               Proyecto → arquitectura Feedforward → conjunto de datos CSV validado → entrenamiento TF/Keras real →
               telemetría en vivo → métricas y versión inmutable con SHA-256.
             </p>

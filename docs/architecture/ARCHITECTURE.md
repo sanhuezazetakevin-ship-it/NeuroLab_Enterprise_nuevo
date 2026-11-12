@@ -256,11 +256,11 @@ DATA_DIR/
 - **Decisión:** `QUEUE_BACKEND=redis|filesystem`, mismo contrato de payload y mismo worker.
 - **Consecuencia:** desarrollo sin infraestructura; Redis sigue siendo el valor por defecto.
 
-### ADR-05 — Entrenamiento real limitado a FEEDFORWARD en el MVP
+### ADR-05 — Entrenamiento tabular para FEEDFORWARD, RNN y CNN
 
-- **Contexto:** RNN/CNN/GAN requieren formas de entrada y datasets distintos (secuencias, imágenes, pares generador/discriminador).
-- **Decisión:** se validan, guardan y documentan; el worker rechaza su entrenamiento con `422` y una razón explícita.
-- **Consecuencia:** alcance honesto y extensible; no se simulan resultados.
+- **Contexto:** los datos del MVP son CSV tabulares. Las RNN y CNN pueden aplicarse adaptando el vector de características a una secuencia `(features, 1)`; GAN requiere un esquema generador/discriminador que el MVP no implementa.
+- **Decisión:** FEEDFORWARD, RNN y CNN se entrenan de forma real. GAN se valida, guarda y documenta, pero su entrenamiento devuelve `422` con una razón explícita.
+- **Consecuencia:** alcance honesto y extensible; no se simulan resultados ni se entrena una topología distinta a la diseñada.
 
 ### ADR-06 — Almacenamiento abstraído: volumen local o bucket S3
 

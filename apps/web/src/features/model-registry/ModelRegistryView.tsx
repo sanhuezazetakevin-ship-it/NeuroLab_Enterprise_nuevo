@@ -29,6 +29,7 @@ import {
   ProjectRequired,
 } from '../../components/common/ProjectGuard';
 import { formatDateTime, formatMetric, formatPercent, shortId } from '../../lib/format';
+import { MODEL_STATUS_LABELS } from '../../lib/labels';
 import {
   ModelInputField,
   ModelLifecycleStatus,
@@ -52,7 +53,7 @@ const STATUS_STYLES: Record<ModelLifecycleStatus, string> = {
   DRAFT: 'text-zinc-700 dark:text-white/80 border-black/20 dark:border-white/25',
   REVIEWED: 'text-sky-700 dark:text-sky-300 border-sky-500/30',
   APPROVED: 'text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-  RETIRED: 'text-zinc-500 dark:text-white/40 border-black/10 dark:border-white/10',
+  RETIRED: 'text-zinc-500 dark:text-white/65 border-black/10 dark:border-white/10',
 };
 
 function lifecycleActions(
@@ -62,7 +63,7 @@ function lifecycleActions(
   return TRANSITIONS[status].map((target) => {
     const requiresApproval = target === 'APPROVED' || target === 'RETIRED';
     const allowed = !requiresApproval || APPROVAL_ROLES.includes(String(effectiveRole));
-    return { target, label: target, requiresApproval, allowed };
+    return { target, label: MODEL_STATUS_LABELS[target], requiresApproval, allowed };
   });
 }
 
@@ -126,7 +127,7 @@ export const ModelRegistryView: React.FC = () => {
   const handleStatusChange = async (model: ModelVersion, target: ModelLifecycleStatus) => {
     const transition = lifecycleActions(model.status, effectiveRole).find((item) => item.target === target);
     if (!transition) {
-      showToast(`Transición no permitida: ${model.status} → ${target}`, 'warning');
+      showToast(`Transición no permitida: ${MODEL_STATUS_LABELS[model.status]} → ${MODEL_STATUS_LABELS[target]}`, 'warning');
       return;
     }
     if (!transition.allowed) {
@@ -140,7 +141,7 @@ export const ModelRegistryView: React.FC = () => {
     try {
       const updated = await ApiClient.updateModelStatus(model.id, target);
       setModels((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      showToast(`Versión ${model.version}: ${model.status} → ${target}`, 'success');
+      showToast(`Versión ${model.version}: ${MODEL_STATUS_LABELS[model.status]} → ${MODEL_STATUS_LABELS[target]}`, 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No fue posible actualizar el estado', 'error');
     } finally {
@@ -227,13 +228,13 @@ export const ModelRegistryView: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Gobernanza de Modelos &amp; Versionado Inmutable
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
             Ciclo de vida DRAFT → REVIEWED → APPROVED → RETIRED con integridad criptográfica SHA-256.
             Proyecto activo: <strong className="text-zinc-700 dark:text-white/70">{activeProject.name}</strong>.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-zinc-500 dark:text-white/45">
+          <span className="text-xs text-zinc-500 dark:text-white/65">
             Rol efectivo: <strong className="font-mono text-zinc-800 dark:text-white/80">{effectiveRole}</strong>
           </span>
           <button
@@ -246,12 +247,12 @@ export const ModelRegistryView: React.FC = () => {
       </div>
 
       <div className="glass-card p-3 rounded-2xl flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-zinc-500 dark:text-white/50 font-medium px-1">Filtrar:</span>
+        <span className="text-zinc-500 dark:text-white/65 font-medium px-1">Filtrar:</span>
         {(['ALL', 'DRAFT', 'REVIEWED', 'APPROVED', 'RETIRED'] as const).map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-2.5 py-1 rounded-lg transition-all font-mono text-[11px] ${
+            className={`px-2.5 py-1 rounded-lg transition-all font-mono text-xs ${
               statusFilter === status
                 ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-semibold'
                 : 'text-zinc-600 dark:text-white/60 hover:text-zinc-900 dark:hover:text-white'
@@ -296,21 +297,21 @@ export const ModelRegistryView: React.FC = () => {
                         {model.version}
                       </h3>
                       <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full glass-inset border ${STATUS_STYLES[model.status]}`}
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full glass-inset border ${STATUS_STYLES[model.status]}`}
                       >
                         {model.status === 'APPROVED' && <ShieldCheck className="w-3 h-3" />}
                         {model.status}
                       </span>
                       {task && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full glass-inset border border-black/10 dark:border-white/10 text-zinc-600 dark:text-white/60">
                           {task}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-zinc-500 dark:text-white/40 font-mono mt-1 truncate">
+                    <p className="text-xs text-zinc-500 dark:text-white/65 font-mono mt-1 truncate">
                       {model.storageKey}
                     </p>
-                    <p className="text-[10px] text-zinc-500 dark:text-white/40 mt-0.5">
+                    <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
                       Registrado {formatDateTime(model.createdAt)} · Job{' '}
                       <span className="font-mono">{shortId(model.jobId, 12)}</span>
                     </p>
@@ -325,10 +326,10 @@ export const ModelRegistryView: React.FC = () => {
                       disabled={updatingId === model.id}
                       title={
                         action.allowed
-                          ? `Mover a ${action.target}`
+                          ? `Mover a ${MODEL_STATUS_LABELS[action.target]}`
                           : `Requiere rol ADMIN o PROJECT_LEAD (RBAC)`
                       }
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium ${
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium ${
                         action.allowed
                           ? 'glass-btn-secondary'
                           : 'glass-btn-secondary opacity-45 cursor-not-allowed'
@@ -343,8 +344,8 @@ export const ModelRegistryView: React.FC = () => {
                   <button
                     onClick={() => handleOpenCard(model)}
                     disabled={cardLoadingId === model.id || model.status === 'RETIRED'}
-                    title="Ver la ficha del modelo (model card) generada en el entrenamiento"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-secondary text-[11px] font-medium disabled:opacity-50"
+                    title="Ver la ficha del modelo generada en el entrenamiento"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-secondary text-xs font-medium disabled:opacity-50"
                   >
                     {cardLoadingId === model.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -362,7 +363,7 @@ export const ModelRegistryView: React.FC = () => {
                         ? 'Reentrene el modelo para generar el esquema de entrada'
                         : 'Ejecutar una predicción real contra el modelo servido'
                     }
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-secondary text-[11px] font-medium disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-secondary text-xs font-medium disabled:opacity-50"
                   >
                     <FlaskConical className="w-3.5 h-3.5" />
                     {testingModelId === model.id ? 'Cerrar prueba' : 'Probar modelo'}
@@ -371,7 +372,7 @@ export const ModelRegistryView: React.FC = () => {
                   <button
                     onClick={() => handleDownload(model)}
                     disabled={downloadingId === model.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-primary text-[11px] font-semibold disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-primary text-xs font-semibold disabled:opacity-50"
                   >
                     {downloadingId === model.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -385,17 +386,17 @@ export const ModelRegistryView: React.FC = () => {
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl glass-inset border border-black/10 dark:border-white/10 text-xs">
                 <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                  <FileCheck2 className="w-3.5 h-3.5 text-zinc-500 dark:text-white/40 shrink-0" />
-                  <span className="text-[10px] uppercase font-bold text-zinc-500 dark:text-white/40 tracking-wider shrink-0">
+                  <FileCheck2 className="w-3.5 h-3.5 text-zinc-500 dark:text-white/65 shrink-0" />
+                  <span className="text-xs uppercase font-bold text-zinc-500 dark:text-white/65 tracking-wider shrink-0">
                     SHA-256
                   </span>
-                  <code className="font-mono text-[11px] text-zinc-800 dark:text-white/80 truncate">
+                  <code className="font-mono text-xs text-zinc-800 dark:text-white/80 truncate">
                     {model.checksum}
                   </code>
                 </div>
                 <button
                   onClick={() => copyChecksum(model.checksum, model.id)}
-                  className="flex items-center gap-1 text-[11px] text-zinc-600 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white shrink-0 self-end sm:self-auto font-medium"
+                  className="flex items-center gap-1 text-xs text-zinc-600 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white shrink-0 self-end sm:self-auto font-medium"
                 >
                   {copiedId === model.id ? (
                     <>
@@ -413,7 +414,7 @@ export const ModelRegistryView: React.FC = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   {highlights.map((item) => (
                     <div key={item.label} className="p-2.5 glass-inset rounded-xl">
-                      <span className="text-zinc-500 dark:text-white/40 text-[10px] uppercase font-bold">
+                      <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold">
                         {item.label}
                       </span>
                       <p className="font-mono font-semibold text-zinc-900 dark:text-white mt-0.5">
@@ -423,14 +424,14 @@ export const ModelRegistryView: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-zinc-500 dark:text-white/40 flex items-center gap-1.5">
+                <p className="text-xs text-zinc-500 dark:text-white/65 flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5" /> Esta versión no tiene métricas de evaluación persistidas.
                 </p>
               )}
 
               {model.metricsSummary?.datasetVersion && (
-                <p className="text-[10px] text-zinc-500 dark:text-white/40 font-mono">
-                  Dataset {model.metricsSummary.datasetVersion}
+                <p className="text-xs text-zinc-500 dark:text-white/65 font-mono">
+                  Conjunto de datos {model.metricsSummary.datasetVersion}
                   {model.metricsSummary.datasetChecksum
                     ? ` · checksum ${model.metricsSummary.datasetChecksum.slice(0, 16)}…`
                     : ''}
@@ -687,21 +688,21 @@ console.log("Resultado:", data.predictions);`;
       <div className="flex items-start justify-between gap-3 border-b border-black/10 dark:border-white/10 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300 flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300 flex items-center gap-1.5">
               <FlaskConical className="w-3.5 h-3.5" /> Inferencia &amp; Consumo Empresarial ({model.version})
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 font-mono">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 font-mono">
               {model.metricsSummary?.task || 'MLP'}
             </span>
           </div>
-          <p className="text-[11px] text-zinc-600 dark:text-white/60 mt-0.5">
+          <p className="text-xs text-zinc-600 dark:text-white/60 mt-0.5">
             Preprocesamiento idéntico al entrenamiento (escaler v2) con control de umbral y trazabilidad.
           </p>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="text-zinc-500 hover:text-zinc-900 dark:text-white/50 dark:hover:text-white p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+          className="text-zinc-500 hover:text-zinc-900 dark:text-white/65 dark:hover:text-white p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
           aria-label="Cerrar panel de prueba"
         >
           <X className="w-4 h-4" />
@@ -730,7 +731,7 @@ console.log("Resultado:", data.predictions);`;
               : 'text-zinc-600 dark:text-white/60 hover:text-zinc-900 dark:hover:text-white'
           }`}
         >
-          <FileSpreadsheet className="w-3.5 h-3.5" /> Lote CSV (Batch)
+          <FileSpreadsheet className="w-3.5 h-3.5" /> Lote CSV
         </button>
         <button
           type="button"
@@ -749,7 +750,7 @@ console.log("Resultado:", data.predictions);`;
       {activeTab === 'single' && (
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {schema.map((field) => (
-            <label key={field.name} className="flex flex-col gap-1 text-[11px]">
+            <label key={field.name} className="flex flex-col gap-1 text-xs">
               <span className="font-medium text-zinc-700 dark:text-white/70">
                 {field.name}
                 {field.nullable ? ' (opcional)' : ''}
@@ -791,7 +792,7 @@ console.log("Resultado:", data.predictions);`;
                 />
               )}
               {field.kind === 'numeric' && (field.min != null || field.max != null) && (
-                <span className="text-[10px] text-zinc-500 dark:text-white/40 font-mono">
+                <span className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                   rango {formatMetric(field.min)} – {formatMetric(field.max)}
                 </span>
               )}
@@ -799,7 +800,7 @@ console.log("Resultado:", data.predictions);`;
           ))}
 
           {isBinary && (
-            <label className="flex flex-col gap-1 text-[11px]">
+            <label className="flex flex-col gap-1 text-xs">
               <span className="font-medium text-zinc-700 dark:text-white/70">
                 Umbral de decisión (opcional)
               </span>
@@ -817,7 +818,7 @@ console.log("Resultado:", data.predictions);`;
                 onChange={(event) => setThreshold(event.target.value)}
                 className="glass-inset rounded-lg border border-black/10 dark:border-white/10 px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-white bg-transparent"
               />
-              <span className="text-[10px] text-zinc-500 dark:text-white/40">
+              <span className="text-xs text-zinc-500 dark:text-white/65">
                 Vacío = umbral óptimo calculado en la evaluación.
               </span>
             </label>
@@ -827,7 +828,7 @@ console.log("Resultado:", data.predictions);`;
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-primary text-[11px] font-semibold disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-btn-primary text-xs font-semibold disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
               Ejecutar predicción
@@ -844,14 +845,14 @@ console.log("Resultado:", data.predictions);`;
             <p className="text-xs font-semibold text-zinc-900 dark:text-white">
               Sube un archivo CSV para predecir en lote
             </p>
-            <p className="text-[11px] text-zinc-500 dark:text-white/50 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-white/65 mt-0.5">
               El archivo debe contener las mismas columnas que el esquema del modelo.
             </p>
             <input
               type="file"
               accept=".csv"
               onChange={handleCSVUpload}
-              className="mt-3 block w-full text-xs text-zinc-500 dark:text-white/50 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:glass-btn-primary cursor-pointer"
+              className="mt-3 block w-full text-xs text-zinc-500 dark:text-white/65 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:glass-btn-primary cursor-pointer"
             />
           </div>
 
@@ -861,7 +862,7 @@ console.log("Resultado:", data.predictions);`;
                 <span className="font-medium text-zinc-800 dark:text-white/80 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {batchFile.name}
                 </span>
-                <span className="font-mono text-zinc-500 dark:text-white/50">
+                <span className="font-mono text-zinc-500 dark:text-white/65">
                   {batchRecords.length} registros detectados
                 </span>
               </div>
@@ -885,7 +886,7 @@ console.log("Resultado:", data.predictions);`;
           )}
 
           {batchError && (
-            <p className="text-[11px] text-rose-700 dark:text-rose-300 flex items-start gap-1.5">
+            <p className="text-xs text-rose-700 dark:text-rose-300 flex items-start gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {batchError}
             </p>
           )}
@@ -897,7 +898,7 @@ console.log("Resultado:", data.predictions);`;
                   <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                     ¡Lote procesado exitosamente!
                   </p>
-                  <p className="text-[11px] text-zinc-600 dark:text-white/60">
+                  <p className="text-xs text-zinc-600 dark:text-white/60">
                     Se generaron {batchResult.predictions.length} predicciones con éxito.
                   </p>
                 </div>
@@ -922,7 +923,7 @@ console.log("Resultado:", data.predictions);`;
               <button
                 type="button"
                 onClick={() => setCodeLang('curl')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-mono transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all ${
                   codeLang === 'curl'
                     ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -933,7 +934,7 @@ console.log("Resultado:", data.predictions);`;
               <button
                 type="button"
                 onClick={() => setCodeLang('python')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-mono transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all ${
                   codeLang === 'python'
                     ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -944,7 +945,7 @@ console.log("Resultado:", data.predictions);`;
               <button
                 type="button"
                 onClick={() => setCodeLang('javascript')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-mono transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all ${
                   codeLang === 'javascript'
                     ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -957,7 +958,7 @@ console.log("Resultado:", data.predictions);`;
             <button
               type="button"
               onClick={copyCode}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg glass-btn-secondary text-[11px] font-medium"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg glass-btn-secondary text-xs font-medium"
             >
               {codeCopied ? (
                 <>
@@ -971,10 +972,10 @@ console.log("Resultado:", data.predictions);`;
             </button>
           </div>
 
-          <div className="relative rounded-xl bg-zinc-950 p-3 font-mono text-[11px] text-zinc-100 overflow-x-auto border border-zinc-800 max-h-64">
+          <div className="relative rounded-xl bg-zinc-950 p-3 font-mono text-xs text-zinc-100 overflow-x-auto border border-zinc-800 max-h-64">
             <pre>{getCodeSnippet()}</pre>
           </div>
-          <p className="text-[10px] text-zinc-500 dark:text-white/40">
+          <p className="text-xs text-zinc-500 dark:text-white/65">
             Reemplaza <code className="font-mono text-sky-400">&lt;TU_JWT_TOKEN&gt;</code> con el token devuelto por <code className="font-mono">POST /auth/login</code>.
           </p>
         </div>
@@ -986,7 +987,7 @@ console.log("Resultado:", data.predictions);`;
           {result.predictions.map((item) => (
             <div key={item.index} className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="text-[10px] uppercase font-bold text-zinc-500 dark:text-white/40">
+                <span className="text-xs uppercase font-bold text-zinc-500 dark:text-white/65">
                   {result.task === 'regression' ? 'Valor estimado' : 'Clase predicha'}
                 </span>
                 <p className="font-mono font-semibold text-zinc-900 dark:text-white">
@@ -995,7 +996,7 @@ console.log("Resultado:", data.predictions);`;
               </div>
               {item.probability != null && (
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-zinc-500 dark:text-white/40">
+                  <span className="text-xs uppercase font-bold text-zinc-500 dark:text-white/65">
                     Probabilidad
                   </span>
                   <p className="font-mono font-semibold text-zinc-900 dark:text-white">
@@ -1004,7 +1005,7 @@ console.log("Resultado:", data.predictions);`;
                 </div>
               )}
               {item.threshold != null && (
-                <span className="text-[10px] font-mono text-zinc-500 dark:text-white/40">
+                <span className="text-xs font-mono text-zinc-500 dark:text-white/65">
                   umbral {formatMetric(item.threshold)}
                 </span>
               )}
@@ -1016,7 +1017,7 @@ console.log("Resultado:", data.predictions);`;
               {Object.entries(result.predictions[0].probabilities)
                 .sort(([, a], [, b]) => b - a)
                 .map(([label, probability]) => (
-                  <div key={label} className="flex items-center gap-2 text-[10px]">
+                  <div key={label} className="flex items-center gap-2 text-xs">
                     <span className="w-24 truncate font-mono text-zinc-600 dark:text-white/60">
                       {label}
                     </span>
@@ -1035,7 +1036,7 @@ console.log("Resultado:", data.predictions);`;
           )}
 
           {result.warnings.length > 0 && (
-            <ul className="text-[10px] text-amber-700 dark:text-amber-300 space-y-0.5">
+            <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5">
               {result.warnings.map((warning) => (
                 <li key={warning} className="flex items-start gap-1">
                   <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" /> {warning}

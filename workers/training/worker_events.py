@@ -42,6 +42,10 @@ class EventPublisher:
             self._redis_disabled = True
         return self._client
 
+    def warm_up(self) -> None:
+        """Resuelve la conexión opcional con Redis antes del primer trabajo."""
+        self._connect()
+
     def publish(self, job_id: UUID, event: Dict[str, Any]) -> None:
         event.setdefault("job_id", str(job_id))
         serialized = json.dumps(event, default=str, ensure_ascii=False)

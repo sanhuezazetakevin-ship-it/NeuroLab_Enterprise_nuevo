@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_roles
 from app.core.security import get_password_hash
 from app.modules.audit.service import record_audit
-from app.modules.training.queue import redis_client, training_queue
+from app.modules.training.queue import redis_health, training_queue
 from app.repositories.models import UserModel
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
@@ -94,10 +94,7 @@ async def system_status(
     except Exception:
         db_ok = False
 
-    client = await redis_client()
-    redis_ok = client is not None
-    if client is not None:
-        await client.aclose()
+    redis_ok = await redis_health()
 
     return {
         "status": "healthy" if db_ok else "degraded",

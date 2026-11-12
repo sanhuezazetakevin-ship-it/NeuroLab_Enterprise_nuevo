@@ -22,3 +22,5 @@ os.environ["DATA_DIR"] = str(_TEST_ROOT / "uploads")
 os.environ["MODEL_DIR"] = str(_TEST_ROOT / "models")
 os.environ["TEMP_DIR"] = str(_TEST_ROOT / "tmp")
 os.environ["QUEUE_BACKEND"] = "filesystem"
+# Aislamiento estricto: ningún test debe poder conectarse a la BD del .env.
+os.environ["DATABASE_URL"] = f"sqlite:///{(_TEST_ROOT / 'worker.db').as_posix()}"

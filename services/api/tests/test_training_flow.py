@@ -1,8 +1,11 @@
 from pathlib import Path
+from uuid import UUID
 
 from httpx import AsyncClient
 
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
+from app.repositories.models import TrainingMetricModel
 
 
 async def _project(client: AsyncClient, headers: dict) -> str:
@@ -145,11 +148,15 @@ async def test_training_job_is_queued_and_cancel_is_persisted(
     )
     assert cancel.status_code == 202, cancel.text
     assert cancel.json()["cancel_requested"] is True
-    assert (Path(settings.DATA_DIR) / "cancellations" / f"{job['id']}.flag").exists()
+    assert cancel.json()["status"] == "CANCELLED"
+    # Un trabajo en cola se cancela de inmediato y se retira del descriptor.
+    assert list((Path(settings.DATA_DIR) / "queue").glob("*.json")) == []
 
     fetched = await client.get(f"/api/v1/training-jobs/{job['id']}", headers=admin_headers)
     assert fetched.status_code == 200
     assert fetched.json()["cancel_requested"] is True
+    assert fetched.json()["status"] == "CANCELLED"
+    assert fetched.json()["ended_at"] is not None
 
     listing = await client.get(
         f"/api/v1/projects/{project_id}/training-jobs", headers=admin_headers
@@ -220,3 +227,48 @@ async def test_training_rejects_architecture_from_another_project(
     )
     assert response.status_code == 422
     assert "no pertenece" in response.text
+
+
+async def test_training_job_listing_groups_metrics_per_job(
+    client: AsyncClient, admin_headers: dict, dataset_csv: bytes
+):
+    """Regresión del N+1: una sola consulta agrupada debe respetar cada job."""
+    project_id = await _project(client, admin_headers)
+    dataset = await _dataset(client, admin_headers, project_id, dataset_csv)
+    architecture = await _architecture(client, admin_headers, project_id)
+
+    job_ids = []
+    for epochs in (1, 2):
+        response = await client.post(
+            f"/api/v1/projects/{project_id}/training-jobs",
+            headers=admin_headers,
+            json={
+                "architecture_id": architecture["id"],
+                "dataset_id": dataset["id"],
+                "target_column": "abandono",
+                "hyperparameters": {"epochs": epochs, "batch_size": 8},
+            },
+        )
+        assert response.status_code == 202, response.text
+        job_ids.append(response.json()["id"])
+
+    async with AsyncSessionLocal() as db:
+        for index, job_id in enumerate(job_ids):
+            db.add(
+                TrainingMetricModel(
+                    job_id=UUID(job_id),
+                    epoch=1,
+                    metric_name="accuracy",
+                    metric_value=0.5 + index / 10,
+                )
+            )
+        await db.commit()
+
+    listing = await client.get(
+        f"/api/v1/projects/{project_id}/training-jobs", headers=admin_headers
+    )
+    assert listing.status_code == 200
+    by_id = {job["id"]: job for job in listing.json()}
+    assert by_id[job_ids[0]]["metrics"] == [{"epoch": 1, "accuracy": 0.5}]
+    assert by_id[job_ids[1]]["metrics"] == [{"epoch": 1, "accuracy": 0.6}]
+

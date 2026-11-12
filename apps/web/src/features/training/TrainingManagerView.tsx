@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PlayCircle,
   StopCircle,
@@ -20,13 +20,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../lib/AppContext';
 import { ApiClient } from '../../lib/api';
+import type { GuidedTarget } from '../../lib/guidedFlow';
 import { useTrainingTelemetry } from '../../hooks/useTrainingTelemetry';
 import { EnlargedChartModal } from '../../components/common/EnlargedChartModal';
 import {
   EmptyBlock,
   ErrorBlock,
   LoadingBlock,
-  ProjectRequired,
+  ProjectRequiredPage,
 } from '../../components/common/ProjectGuard';
 import {
   formatDateTime,
@@ -68,7 +69,7 @@ function StatusPill({ status }: { status: JobStatus }) {
   const isError = status === 'FAILED';
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold glass-inset border ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold glass-inset border ${STATUS_STYLES[status]}`}
     >
       {isActive && <Loader2 className="w-3 h-3 animate-spin" />}
       {isDone && <CheckCircle2 className="w-3 h-3" />}
@@ -78,6 +79,16 @@ function StatusPill({ status }: { status: JobStatus }) {
   );
 }
 
+function formatSeconds(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds)) return '—';
+  if (seconds < 60) return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)} s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = Math.round(seconds % 60);
+  if (minutes < 60) return `${minutes} min ${rest} s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} h ${minutes % 60} min`;
+}
+
 interface ChartProps {
   metrics: TrainingMetric[];
   metric: 'loss' | 'accuracy';
@@ -85,28 +96,65 @@ interface ChartProps {
   isLarge?: boolean;
 }
 
+/** Devuelve la época con mejor métrica de validación (o entrenamiento si no hay validación). */
+function bestEpochFor(metrics: TrainingMetric[], metric: 'loss' | 'accuracy'): number | null {
+  const valKey = metric === 'loss' ? 'valLoss' : 'valAccuracy';
+  const withValidation = metrics.filter((point) => {
+    const value = point[valKey];
+    return typeof value === 'number' && Number.isFinite(value);
+  });
+  const pool = withValidation.length
+    ? withValidation
+    : metrics.filter((point) => {
+        const value = point[metric];
+        return typeof value === 'number' && Number.isFinite(value);
+      });
+  if (!pool.length) return null;
+
+  const isBetter = (candidate: number, current: number) =>
+    metric === 'loss' ? candidate < current : candidate > current;
+
+  let best = pool[0];
+  let bestValue = (best[valKey] ?? best[metric]) as number;
+  for (const point of pool.slice(1)) {
+    const value = (point[valKey] ?? point[metric]) as number;
+    if (isBetter(value, bestValue)) {
+      best = point;
+      bestValue = value;
+    }
+  }
+  return best.epoch;
+}
+
 function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartProps) {
   const trainKey = metric;
   const valKey = metric === 'loss' ? 'valLoss' : 'valAccuracy';
-  const trainValues = metrics
-    .map((point) => point[trainKey])
-    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
-  if (!trainValues.length) {
+  const trainSeries = metrics
+    .map((point) => ({ epoch: point.epoch, value: point[trainKey] }))
+    .filter((point): point is { epoch: number; value: number } =>
+      typeof point.value === 'number' && Number.isFinite(point.value),
+    );
+
+  if (!trainSeries.length) {
     return (
-      <div className="h-28 flex items-center justify-center text-[11px] text-zinc-500 dark:text-white/40 font-mono">
+      <div className="h-28 flex items-center justify-center text-xs text-zinc-600 dark:text-white/65 font-mono">
         Esperando datos reales del worker…
       </div>
     );
   }
 
+  const valSeries = metrics
+    .map((point) => ({ epoch: point.epoch, value: point[valKey] }))
+    .filter((point): point is { epoch: number; value: number } =>
+      typeof point.value === 'number' && Number.isFinite(point.value),
+    );
+
   const width = isLarge ? 720 : 260;
   const height = isLarge ? 280 : 100;
   const padding = isLarge ? 38 : 14;
   const maxEpoch = Math.max(totalEpochs, ...metrics.map((point) => point.epoch), 1);
-  const allValues = metrics
-    .flatMap((point) => [point[trainKey], point[valKey]])
-    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  const allValues = [...trainSeries, ...valSeries].map((point) => point.value);
   let minValue = Math.min(...allValues);
   let maxValue = Math.max(...allValues);
   if (metric === 'accuracy') {
@@ -123,39 +171,42 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
     return [x, y] as const;
   };
 
-  const trainPoints: string[] = [];
-  const valPoints: string[] = [];
-  metrics.forEach((point) => {
-    const trainValue = point[trainKey];
-    if (typeof trainValue === 'number' && Number.isFinite(trainValue)) {
-      const [x, y] = project(point.epoch, trainValue);
-      trainPoints.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    }
-    const valValue = point[valKey];
-    if (typeof valValue === 'number' && Number.isFinite(valValue)) {
-      const [x, y] = project(point.epoch, valValue);
-      valPoints.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-    }
-  });
+  const trainPositions = trainSeries.map((point) => ({ ...point, xy: project(point.epoch, point.value) }));
+  const valPositions = valSeries.map((point) => ({ ...point, xy: project(point.epoch, point.value) }));
+  const trainPoints = trainPositions.map((point) => `${point.xy[0].toFixed(1)},${point.xy[1].toFixed(1)}`);
+  const valPoints = valPositions.map((point) => `${point.xy[0].toFixed(1)},${point.xy[1].toFixed(1)}`);
 
-  const lastTrainPoint = trainPoints[trainPoints.length - 1]?.split(',') || null;
+  const candidateSeries = valSeries.length ? valSeries : trainSeries;
+  const bestPoint = candidateSeries.reduce((best, point) =>
+    metric === 'loss'
+      ? point.value < best.value
+        ? point
+        : best
+      : point.value > best.value
+        ? point
+        : best,
+  );
+  const bestXY = project(bestPoint.epoch, bestPoint.value);
+  const lastTrainPosition = trainPositions[trainPositions.length - 1];
+
   const formatAxis = (value: number) =>
-    metric === 'accuracy' ? `${(value * 100).toFixed(0)}%` : value.toFixed(2);
+    metric === 'accuracy' ? `${(value * 100).toFixed(0)}%` : value.toFixed(3);
+  const metricLabel = metric === 'loss' ? 'pérdida' : 'exactitud';
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="w-full h-auto overflow-visible select-none text-zinc-900 dark:text-white"
       role="img"
-      aria-label={`Curva de ${metric}`}
+      aria-label={`Curva de ${metricLabel} con entrenamiento y validación. Mejor época: ${bestPoint.epoch}.`}
     >
       <line
         x1={padding}
-        y1={padding}
+        y1={height / 2}
         x2={width - padding}
-        y2={padding}
+        y2={height / 2}
         stroke="currentColor"
-        strokeOpacity="0.08"
+        strokeOpacity="0.10"
         strokeDasharray="3 3"
       />
       <line
@@ -164,7 +215,7 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
         x2={width - padding}
         y2={height - padding}
         stroke="currentColor"
-        strokeOpacity="0.2"
+        strokeOpacity="0.22"
       />
       <line
         x1={padding}
@@ -172,7 +223,7 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
         x2={padding}
         y2={height - padding}
         stroke="currentColor"
-        strokeOpacity="0.2"
+        strokeOpacity="0.22"
       />
 
       {isLarge && (
@@ -180,10 +231,10 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
           <text
             x={padding - 8}
             y={padding + 4}
-            fontSize="10"
+            fontSize="11"
             textAnchor="end"
             fill="currentColor"
-            opacity="0.45"
+            opacity="0.65"
             fontFamily="monospace"
           >
             {formatAxis(maxValue)}
@@ -191,26 +242,26 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
           <text
             x={padding - 8}
             y={height - padding}
-            fontSize="10"
+            fontSize="11"
             textAnchor="end"
             fill="currentColor"
-            opacity="0.45"
+            opacity="0.65"
             fontFamily="monospace"
           >
             {formatAxis(minValue)}
           </text>
           <text
             x={width - padding}
-            y={height - padding + 16}
-            fontSize="10"
+            y={height - padding + 17}
+            fontSize="11"
             textAnchor="end"
             fill="currentColor"
-            opacity="0.45"
+            opacity="0.65"
             fontFamily="monospace"
           >
             Época {maxEpoch}
           </text>
-          <text x={padding} y={height - padding + 16} fontSize="10" fill="currentColor" opacity="0.45">
+          <text x={padding} y={height - padding + 17} fontSize="11" fill="currentColor" opacity="0.65">
             Época 1
           </text>
         </>
@@ -218,13 +269,46 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
 
       <defs>
         <filter id={`glow-${metric}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#f43f5e" floodOpacity="0.65" />
+          <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="var(--chart-train)" floodOpacity="0.55" />
         </filter>
       </defs>
 
+      {/* Marcador de mejor época */}
+      <line
+        x1={bestXY[0]}
+        y1={padding}
+        x2={bestXY[0]}
+        y2={height - padding}
+        stroke="var(--chart-best)"
+        strokeWidth="1"
+        strokeDasharray="3 4"
+        opacity="0.75"
+      />
+      <circle
+        cx={bestXY[0]}
+        cy={bestXY[1]}
+        r={isLarge ? '4' : '2.5'}
+        fill="var(--chart-best)"
+        stroke="var(--canvas-bg)"
+        strokeWidth="1.2"
+      >
+        <title>{`Mejor época ${bestPoint.epoch}: ${formatAxis(bestPoint.value)}`}</title>
+      </circle>
+      {isLarge && (
+        <text
+          x={Math.min(bestXY[0] + 7, width - padding - 78)}
+          y={padding + 10}
+          fontSize="11"
+          fill="var(--chart-best)"
+          fontFamily="monospace"
+        >
+          Mejor época {bestPoint.epoch}
+        </text>
+      )}
+
       <polyline
         fill="none"
-        stroke="#f43f5e"
+        stroke="var(--chart-train)"
         strokeWidth={isLarge ? '2.5' : '2'}
         points={trainPoints.join(' ')}
         strokeLinecap="round"
@@ -234,30 +318,67 @@ function MetricChart({ metrics, metric, totalEpochs, isLarge = false }: ChartPro
       {valPoints.length > 1 && (
         <polyline
           fill="none"
-          stroke="#38bdf8"
-          strokeOpacity="0.85"
+          stroke="var(--chart-val)"
           strokeWidth={isLarge ? '2' : '1.5'}
-          strokeDasharray="4 3"
+          strokeDasharray="5 4"
           points={valPoints.join(' ')}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       )}
-      {lastTrainPoint && (
+
+      {isLarge &&
+        trainPositions.map((point) => (
+          <circle
+            key={`train-${point.epoch}`}
+            cx={point.xy[0]}
+            cy={point.xy[1]}
+            r="2.6"
+            fill="var(--chart-train)"
+            opacity="0.95"
+          >
+            <title>{`Época ${point.epoch} · Entrenamiento: ${formatAxis(point.value)}`}</title>
+          </circle>
+        ))}
+      {isLarge &&
+        valPositions.map((point) => (
+          <circle
+            key={`val-${point.epoch}`}
+            cx={point.xy[0]}
+            cy={point.xy[1]}
+            r="2.6"
+            fill="var(--chart-val)"
+            opacity="0.95"
+          >
+            <title>{`Época ${point.epoch} · Validación: ${formatAxis(point.value)}`}</title>
+          </circle>
+        ))}
+
+      {lastTrainPosition && (
         <circle
-          cx={lastTrainPoint[0]}
-          cy={lastTrainPoint[1]}
-          r={isLarge ? '5' : '3.5'}
-          fill="#f43f5e"
-          stroke="#ffffff"
+          cx={lastTrainPosition.xy[0]}
+          cy={lastTrainPosition.xy[1]}
+          r={isLarge ? '4.5' : '3.5'}
+          fill="var(--chart-train)"
+          stroke="var(--canvas-bg)"
           strokeWidth="1.5"
-        />
+        >
+          <title>{`Última época ${lastTrainPosition.epoch}: ${formatAxis(lastTrainPosition.value)}`}</title>
+        </circle>
       )}
     </svg>
   );
 }
 
-export const TrainingManagerView: React.FC = () => {
+interface TrainingManagerViewProps {
+  guided?: GuidedTarget | null;
+  onGuidedConsumed?: (id: number) => void;
+}
+
+export const TrainingManagerView: React.FC<TrainingManagerViewProps> = ({
+  guided,
+  onGuidedConsumed,
+}) => {
   const { activeProject, currentRole, showToast } = useApp();
   const projectId = activeProject?.id;
   const canWrite = WRITE_ROLES.includes(currentRole);
@@ -275,7 +396,7 @@ export const TrainingManagerView: React.FC = () => {
   const [task, setTask] = useState<'classification' | 'regression' | ''>('');
   const [epochs, setEpochs] = useState(30);
   const [batchSize, setBatchSize] = useState(32);
-  const [optimizer, setOptimizer] = useState<'adam' | 'sgd' | 'rmsprop'>('adam');
+  const [optimizer, setOptimizer] = useState<'adam' | 'sgd' | 'rmsprop' | 'adamw' | 'nadam'>('adam');
   const [learningRate, setLearningRate] = useState(0.001);
   const [starting, setStarting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -360,6 +481,36 @@ export const TrainingManagerView: React.FC = () => {
     }
   };
 
+  // Flujo guiado: al venir del diseñador deja lista la arquitectura y el CSV
+  // recién guardados, para que el usuario sólo revise y lance el trabajo.
+  useEffect(() => {
+    if (!guided) return;
+    if (!guided.architectureId && !guided.datasetId) return;
+    const architectureReady = guided.architectureId
+      ? architectures.some((item) => item.id === guided.architectureId)
+      : true;
+    const datasetReady = guided.datasetId
+      ? datasets.some((item) => item.id === guided.datasetId)
+      : true;
+    if (!architectureReady || !datasetReady) return;
+
+    if (guided.architectureId) setArchitectureId(guided.architectureId);
+    if (guided.datasetId) {
+      const dataset = datasets.find((item) => item.id === guided.datasetId);
+      setDatasetId(guided.datasetId);
+      if (dataset) {
+        setTargetColumn(dataset.targetColumn || dataset.metadata.targetColumn || '');
+        setTask(dataset.metadata.task || '');
+      }
+    }
+    onGuidedConsumed?.(guided.id);
+    showToast(
+      'Arquitectura y conjunto de datos preseleccionados. Revise los hiperparámetros y lance el entrenamiento.',
+      'info',
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guided?.id, architectures, datasets]);
+
   const telemetry = useTrainingTelemetry(selectedJob?.id ?? null, {
     totalEpochs: selectedJob?.hyperparameters.epochs,
     initialMetrics: selectedJob?.metrics ?? [],
@@ -377,6 +528,35 @@ export const TrainingManagerView: React.FC = () => {
   const hasAccuracy = metrics.some((point) => typeof point.accuracy === 'number');
   const totalEpochs = selectedJob?.hyperparameters.epochs ?? telemetry.totalEpochs;
   const isActive = effectiveStatus ? ACTIVE_STATES.includes(effectiveStatus) : false;
+
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!isActive) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [isActive]);
+
+  const timing = useMemo(() => {
+    if (!selectedJob?.startedAt || metrics.length === 0) {
+      return { secondsPerEpoch: null as number | null, etaSeconds: null as number | null };
+    }
+    const start = new Date(selectedJob.startedAt).getTime();
+    const end = selectedJob.endedAt ? new Date(selectedJob.endedAt).getTime() : now;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      return { secondsPerEpoch: null, etaSeconds: null };
+    }
+    const secondsPerEpoch = (end - start) / 1000 / metrics.length;
+    const target = totalEpochs || selectedJob.hyperparameters.epochs || metrics.length;
+    const remaining = Math.max(0, target - metrics.length);
+    return {
+      secondsPerEpoch,
+      etaSeconds: isActive ? remaining * secondsPerEpoch : null,
+    };
+  }, [selectedJob, metrics.length, totalEpochs, now, isActive]);
+
+  const bestLossEpoch = useMemo(() => bestEpochFor(metrics, 'loss'), [metrics]);
+  const bestAccuracyEpoch = useMemo(() => bestEpochFor(metrics, 'accuracy'), [metrics]);
 
   // Refresca la lista (estado persistido) cuando el SSE confirma un final.
   useEffect(() => {
@@ -447,10 +627,13 @@ export const TrainingManagerView: React.FC = () => {
     }
     setCancelling(true);
     try {
-      await ApiClient.cancelTraining(selectedJob.id);
+      const result = await ApiClient.cancelTraining(selectedJob.id);
+      const cancelledNow = result.status === 'CANCELLED';
       showToast(
-        'Cancelación registrada. El worker la aplicará al finalizar la época en curso.',
-        'warning',
+        cancelledNow
+          ? 'Trabajo cancelado antes de iniciar.'
+          : 'Cancelación solicitada. El worker la aplicará al finalizar la época en curso.',
+        cancelledNow ? 'success' : 'warning',
       );
       await telemetry.refresh();
       await loadJobs();
@@ -490,7 +673,15 @@ export const TrainingManagerView: React.FC = () => {
   }, [selectedJob, metrics, totalEpochs, effectiveStatus, telemetry.errorMessage]);
 
   if (!activeProject) {
-    return <ProjectRequired action="Seleccione un proyecto para iniciar y monitorear entrenamientos." />;
+    return (
+      <ProjectRequiredPage
+        icon={PlayCircle}
+        eyebrow="Módulo 06 • Orquestador de Entrenamientos"
+        title="Ejecución Asíncrona & Telemetría"
+        description="Entrenamiento real de TensorFlow/Keras en un worker aislado. La telemetría se persiste en PostgreSQL y llega por SSE con recuperación ante reconexiones."
+        action="Seleccione un proyecto para iniciar y monitorear entrenamientos."
+      />
+    );
   }
 
   return (
@@ -505,7 +696,7 @@ export const TrainingManagerView: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white mt-1">
             Ejecución Asíncrona & Telemetría
           </h1>
-          <p className="text-xs text-zinc-600 dark:text-white/50 mt-0.5">
+          <p className="text-xs text-zinc-600 dark:text-white/65 mt-0.5">
             Entrenamiento real de TensorFlow/Keras en un worker aislado. La telemetría se persiste en
             PostgreSQL y llega por SSE con recuperación ante reconexiones.
           </p>
@@ -518,23 +709,27 @@ export const TrainingManagerView: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
           </button>
-          {isActive ? (
+          {isActive && (
             <button
               onClick={handleCancel}
-              disabled={cancelling || !canWrite}
+              disabled={cancelling || selectedJob?.cancelRequested || !canWrite}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-300 border border-red-500/30 text-xs font-medium transition-colors disabled:opacity-50"
             >
-              <StopCircle className="w-4 h-4" /> {cancelling ? 'Solicitando…' : 'Cancelar trabajo'}
-            </button>
-          ) : (
-            <button
-              onClick={handleStart}
-              disabled={starting || !canWrite}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-btn-primary text-xs font-semibold disabled:opacity-50"
-            >
-              <PlayCircle className="w-4 h-4" /> {starting ? 'Encolando…' : 'Iniciar Entrenamiento'}
+              <StopCircle className="w-4 h-4" />{' '}
+              {selectedJob?.cancelRequested
+                ? 'Cancelación solicitada'
+                : cancelling
+                  ? 'Cancelando…'
+                  : 'Cancelar trabajo'}
             </button>
           )}
+          <button
+            onClick={handleStart}
+            disabled={starting || !canWrite}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-btn-primary text-xs font-semibold disabled:opacity-50"
+          >
+            <PlayCircle className="w-4 h-4" /> {starting ? 'Encolando…' : 'Iniciar Entrenamiento'}
+          </button>
         </div>
       </div>
 
@@ -542,7 +737,7 @@ export const TrainingManagerView: React.FC = () => {
       {loading && <LoadingBlock label="Cargando arquitecturas, conjuntos de datos y trabajos…" />}
 
       {!canWrite && (
-        <div className="glass-card p-3 rounded-2xl border border-amber-500/25 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-2">
+        <div className="glass-card p-3 rounded-2xl border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           Su rol ({labelFor(ROLE_LABELS, currentRole)}) permite consultar trabajos y métricas, pero no iniciar ni cancelar
           entrenamientos.
@@ -563,11 +758,16 @@ export const TrainingManagerView: React.FC = () => {
                     {shortId(selectedJob.id, 12)}
                   </span>
                 ) : (
-                  <span className="text-xs text-zinc-500 dark:text-white/40">Ninguno</span>
+                  <span className="text-xs text-zinc-500 dark:text-white/65">Ninguno</span>
                 )}
                 {effectiveStatus && <StatusPill status={effectiveStatus} />}
+                {selectedJob?.cancelRequested && isActive && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-300">
+                    <AlertTriangle className="w-3 h-3" /> Cancelación pendiente
+                  </span>
+                )}
                 {telemetry.isConnected && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-300 font-medium">
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300 font-medium">
                     <Radio className="w-3 h-3" /> SSE en vivo
                   </span>
                 )}
@@ -584,14 +784,16 @@ export const TrainingManagerView: React.FC = () => {
                     ? 'bg-rose-500'
                     : effectiveStatus === 'CANCELLED'
                       ? 'bg-amber-500'
-                      : 'bg-zinc-900 dark:bg-white'
+                      : effectiveStatus === 'COMPLETED'
+                        ? 'bg-emerald-500'
+                        : 'bg-sky-500'
                 }`}
                 style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
               />
             </div>
 
             {selectedJob && (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-zinc-500 dark:text-white/45 font-mono">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-white/65 font-mono">
                 <span>Creado: {formatDateTime(selectedJob.createdAt)}</span>
                 <span>Duración: {formatDuration(selectedJob.startedAt, selectedJob.endedAt)}</span>
                 <span>
@@ -604,20 +806,22 @@ export const TrainingManagerView: React.FC = () => {
             )}
 
             {selectedJob?.errorMessage && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-300">{selectedJob.errorMessage}</p>
+              <p className="text-xs text-rose-600 dark:text-rose-300">{selectedJob.errorMessage}</p>
             )}
           </div>
 
           {/* Quick metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
             {[
-              { label: 'Pérdida', value: formatMetric(latestMetric?.loss), tone: '' },
-              { label: 'Exactitud', value: formatPercent(latestMetric?.accuracy), tone: '' },
-              { label: 'Pérdida de validación', value: formatMetric(latestMetric?.valLoss), tone: 'muted' },
-              { label: 'Exactitud de validación', value: formatPercent(latestMetric?.valAccuracy), tone: 'muted' },
+              { label: 'Pérdida', value: formatMetric(latestMetric?.loss), tone: '', hint: 'entrenamiento' },
+              { label: 'Exactitud', value: formatPercent(latestMetric?.accuracy), tone: '', hint: 'entrenamiento' },
+              { label: 'Pérdida val.', value: formatMetric(latestMetric?.valLoss), tone: 'muted', hint: 'validación' },
+              { label: 'Exactitud val.', value: formatPercent(latestMetric?.valAccuracy), tone: 'muted', hint: 'validación' },
+              { label: 'Velocidad', value: formatSeconds(timing.secondsPerEpoch), tone: 'muted', hint: 'por época' },
+              { label: 'Tiempo restante', value: formatSeconds(timing.etaSeconds), tone: 'muted', hint: isActive ? 'estimado' : 'sin ejecución' },
             ].map((item) => (
               <div key={item.label} className="glass-card p-4 rounded-2xl">
-                <span className="text-[11px] text-zinc-500 dark:text-white/50 font-medium">
+                <span className="text-xs text-zinc-600 dark:text-white/65 font-medium">
                   {item.label}
                 </span>
                 <div
@@ -629,6 +833,7 @@ export const TrainingManagerView: React.FC = () => {
                 >
                   {item.value}
                 </div>
+                <span className="text-2xs text-zinc-500 dark:text-white/60">{item.hint}</span>
               </div>
             ))}
           </div>
@@ -640,20 +845,24 @@ export const TrainingManagerView: React.FC = () => {
                 <Sliders className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Configuración del
                 nuevo trabajo
               </span>
-              <span className="text-[10px] text-zinc-500 dark:text-white/45 font-mono">
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                 Semilla determinista · partición 70/15/15
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-architecture"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Arquitectura
                 </label>
                 <select
+                  id="training-architecture"
                   value={architectureId}
                   onChange={(event) => handleArchitectureChange(event.target.value)}
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                 >
                   <option value="">Seleccione…</option>
                   {architectures.map((architecture) => (
@@ -663,20 +872,28 @@ export const TrainingManagerView: React.FC = () => {
                   ))}
                 </select>
                 {architectures.length === 0 && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-300 mt-1">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                     Guarde una arquitectura en el Diseñador para poder entrenar.
                   </p>
                 )}
+                <p className="text-xs text-zinc-600 dark:text-white/65 mt-1">
+                  La capa de salida se ajusta automáticamente a la tarea detectada
+                  (por ejemplo, 1 unidad sigmoide en clasificación binaria).
+                </p>
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-dataset"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Conjunto de datos
                 </label>
                 <select
+                  id="training-dataset"
                   value={datasetId}
                   onChange={(event) => handleDatasetChange(event.target.value)}
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                 >
                   <option value="">Seleccione…</option>
                   {datasets.map((dataset) => (
@@ -686,20 +903,24 @@ export const TrainingManagerView: React.FC = () => {
                   ))}
                 </select>
                 {datasets.length === 0 && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-300 mt-1">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                     Suba un CSV validado en el módulo Conjuntos de datos.
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-target"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Columna objetivo
                 </label>
                 <select
+                  id="training-target"
                   value={targetColumn}
                   onChange={(event) => setTargetColumn(event.target.value)}
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                   disabled={!selectedDataset}
                 >
                   <option value="">Seleccione…</option>
@@ -712,15 +933,19 @@ export const TrainingManagerView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-task"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Tipo de tarea
                 </label>
                 <select
+                  id="training-task"
                   value={task}
                   onChange={(event) =>
                     setTask(event.target.value as 'classification' | 'regression' | '')
                   }
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                 >
                   <option value="">Detectar desde el conjunto de datos</option>
                   <option value="classification">Clasificación</option>
@@ -729,27 +954,35 @@ export const TrainingManagerView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-epochs"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Épocas
                 </label>
                 <input
+                  id="training-epochs"
                   type="number"
                   min="1"
                   max="1000"
                   value={epochs}
                   onChange={(event) => setEpochs(Math.max(1, parseInt(event.target.value, 10) || 1))}
-                  className="w-full glass-input rounded-xl px-3 py-1.5 font-mono"
+                  className="w-full glass-input rounded-xl px-3 py-2 font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-batch"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Tamaño de lote
                 </label>
                 <select
+                  id="training-batch"
                   value={batchSize}
                   onChange={(event) => setBatchSize(parseInt(event.target.value, 10))}
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                 >
                   {[8, 16, 32, 64, 128, 256].map((size) => (
                     <option key={size} value={size}>
@@ -760,27 +993,37 @@ export const TrainingManagerView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-optimizer"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Optimizador
                 </label>
                 <select
+                  id="training-optimizer"
                   value={optimizer}
                   onChange={(event) =>
-                    setOptimizer(event.target.value as 'adam' | 'sgd' | 'rmsprop')
+                    setOptimizer(event.target.value as 'adam' | 'sgd' | 'rmsprop' | 'adamw' | 'nadam')
                   }
-                  className="w-full glass-input rounded-xl px-3 py-1.5"
+                  className="w-full glass-input rounded-xl px-3 py-2"
                 >
                   <option value="adam">Adam</option>
+                  <option value="adamw">AdamW</option>
+                  <option value="nadam">Nadam</option>
                   <option value="sgd">SGD</option>
                   <option value="rmsprop">RMSprop</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-zinc-600 dark:text-white/50 text-[10px] uppercase font-bold mb-1.5">
+                <label
+                  htmlFor="training-learning-rate"
+                  className="block text-zinc-700 dark:text-white/75 text-xs uppercase font-bold mb-1.5"
+                >
                   Tasa de aprendizaje
                 </label>
                 <input
+                  id="training-learning-rate"
                   type="number"
                   step="0.0001"
                   min="0.000001"
@@ -789,16 +1032,26 @@ export const TrainingManagerView: React.FC = () => {
                   onChange={(event) =>
                     setLearningRate(Math.max(0.000001, parseFloat(event.target.value) || 0.001))
                   }
-                  className="w-full glass-input rounded-xl px-3 py-1.5 font-mono"
+                  className="w-full glass-input rounded-xl px-3 py-2 font-mono"
                 />
               </div>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl glass-inset border border-rose-500/25 text-[11px] text-rose-600 dark:text-rose-300 flex items-start gap-2">
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="p-3 rounded-xl glass-inset border border-rose-500/30 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2"
+              >
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {formError}
               </div>
             )}
+
+            <p className="text-xs text-zinc-500 dark:text-white/65">
+              {isActive
+                ? `Hay un trabajo ${labelFor(JOB_STATUS_LABELS, effectiveStatus)}; puede encolar otro y el worker los procesará en orden.`
+                : 'El trabajo se encola y lo procesa el worker aislado de TensorFlow.'}
+            </p>
           </div>
 
           {/* Jobs table */}
@@ -808,7 +1061,7 @@ export const TrainingManagerView: React.FC = () => {
                 <Activity className="w-3.5 h-3.5 text-zinc-600 dark:text-white/70" /> Historial de
                 trabajos
               </h2>
-              <span className="text-[10px] text-zinc-500 dark:text-white/40 font-mono">
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                 {jobs.length} registrados
               </span>
             </div>
@@ -823,7 +1076,7 @@ export const TrainingManagerView: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/40">
+                    <tr className="border-b border-black/10 dark:border-white/10 text-zinc-500 dark:text-white/65">
                       <th className="pb-2.5 font-medium">Trabajo</th>
                       <th className="pb-2.5 font-medium">Arquitectura</th>
                       <th className="pb-2.5 font-medium">Conjunto de datos</th>
@@ -862,7 +1115,7 @@ export const TrainingManagerView: React.FC = () => {
                           <td className="py-2.5 font-mono text-zinc-600 dark:text-white/60">
                             {job.metrics.length}/{job.hyperparameters.epochs}
                           </td>
-                          <td className="py-2.5 text-[10px] text-zinc-500 dark:text-white/45 font-mono whitespace-nowrap">
+                          <td className="py-2.5 text-xs text-zinc-500 dark:text-white/65 font-mono whitespace-nowrap">
                             {formatDateTime(job.createdAt)}
                           </td>
                         </tr>
@@ -881,11 +1134,11 @@ export const TrainingManagerView: React.FC = () => {
                 <Terminal className="w-3.5 h-3.5 text-zinc-600 dark:text-white/60" /> Salida del
                 worker (datos persistidos + SSE)
               </span>
-              <span className="text-[10px] text-zinc-500 dark:text-white/50 font-mono">
+              <span className="text-xs text-zinc-500 dark:text-white/65 font-mono">
                 {telemetry.isConnected ? 'stream conectado' : 'sincronización por sondeo'}
               </span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-zinc-950 text-zinc-200 border border-black/10 dark:border-white/10 font-mono text-[11px] max-h-40 overflow-y-auto space-y-1">
+            <div className="p-3.5 rounded-2xl bg-zinc-950 text-zinc-200 border border-black/10 dark:border-white/10 font-mono text-xs max-h-40 overflow-y-auto space-y-1">
               {logs.length === 0 ? (
                 <div className="text-zinc-500">Seleccione un trabajo para ver su traza.</div>
               ) : (
@@ -904,14 +1157,16 @@ export const TrainingManagerView: React.FC = () => {
 
         {/* Right dock */}
         <div className="space-y-3.5">
-          <div className="text-xs font-medium text-zinc-600 dark:text-white/50 flex items-center justify-between px-1">
+          <div className="text-xs font-medium text-zinc-600 dark:text-white/65 flex items-center justify-between px-1">
             <span>Telemetría gráfica</span>
-            <span className="text-[10px] text-zinc-800 dark:text-white/70">Clic para ampliar</span>
+            <span className="text-xs text-zinc-800 dark:text-white/70">Clic para ampliar</span>
           </div>
 
-          <div
+          <button
+            type="button"
             onClick={() => setEnlargedModal('loss')}
-            className="glass-card p-4 rounded-2xl glass-card-hover cursor-pointer space-y-2"
+            className="glass-card p-4 rounded-2xl glass-card-hover cursor-pointer space-y-2 w-full text-left"
+            aria-label="Ampliar curva de pérdida"
           >
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-zinc-900 dark:text-white/90 flex items-center gap-1.5">
@@ -919,33 +1174,41 @@ export const TrainingManagerView: React.FC = () => {
                 pérdida
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[11px] text-zinc-900 dark:text-white font-medium">
+                <span className="font-mono text-xs text-zinc-900 dark:text-white font-medium">
                   {formatMetric(latestMetric?.loss)}
                 </span>
-                <Maximize2 className="w-3 h-3 text-zinc-400 dark:text-white/40" />
+                <Maximize2 className="w-3 h-3 text-zinc-500 dark:text-white/65" />
               </div>
             </div>
             <div className="p-2 glass-inset rounded-xl">
               <MetricChart metrics={metrics} metric="loss" totalEpochs={totalEpochs} />
             </div>
-            <div className="flex justify-between items-center text-[10px] px-0.5">
-              <span className="flex items-center gap-2.5 text-zinc-500 dark:text-white/50">
-                <span className="flex items-center gap-1 font-mono text-[9px]">
-                  <span className="w-2.5 h-0.5 bg-rose-500 inline-block rounded-full shadow-[0_0_6px_#f43f5e]" /> Entren.
+            <div className="flex flex-wrap justify-between items-center gap-2 text-xs px-0.5">
+              <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-zinc-600 dark:text-white/65">
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="w-3 h-0.5 bg-sky-400 inline-block rounded-full" /> Entren.
                 </span>
-                <span className="flex items-center gap-1 font-mono text-[9px]">
-                  <span className="w-2.5 h-0.5 bg-sky-400 inline-block border-b border-dashed border-sky-400" /> Valid.
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="w-3 h-0 inline-block border-t-2 border-dashed border-amber-400" /> Valid.
                 </span>
+                {bestLossEpoch != null && (
+                  <span className="flex items-center gap-1 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Mejor: {bestLossEpoch}
+                  </span>
+                )}
               </span>
-              <span className="text-zinc-800 dark:text-rose-400 font-medium">Ampliar →</span>
+              <span className="text-sky-700 dark:text-sky-300 font-medium">Ampliar →</span>
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             onClick={() => hasAccuracy && setEnlargedModal('accuracy')}
-            className={`glass-card p-4 rounded-2xl space-y-2 ${
+            disabled={!hasAccuracy}
+            className={`glass-card p-4 rounded-2xl space-y-2 w-full text-left ${
               hasAccuracy ? 'glass-card-hover cursor-pointer' : 'opacity-70'
             }`}
+            aria-label="Ampliar curva de exactitud"
           >
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-zinc-900 dark:text-white/90 flex items-center gap-1.5">
@@ -953,35 +1216,40 @@ export const TrainingManagerView: React.FC = () => {
                 exactitud
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[11px] text-zinc-900 dark:text-white font-medium">
+                <span className="font-mono text-xs text-zinc-900 dark:text-white font-medium">
                   {formatPercent(latestMetric?.accuracy)}
                 </span>
-                {hasAccuracy && <Maximize2 className="w-3 h-3 text-zinc-400 dark:text-white/40" />}
+                {hasAccuracy && <Maximize2 className="w-3 h-3 text-zinc-500 dark:text-white/65" />}
               </div>
             </div>
             <div className="p-2 glass-inset rounded-xl">
               {hasAccuracy ? (
                 <MetricChart metrics={metrics} metric="accuracy" totalEpochs={totalEpochs} />
               ) : (
-                <div className="h-28 flex items-center justify-center text-[11px] text-zinc-500 dark:text-white/40 font-mono">
+                <div className="h-28 flex items-center justify-center text-xs text-zinc-600 dark:text-white/65 font-mono">
                   No aplica para regresión
                 </div>
               )}
             </div>
-            <div className="flex justify-between items-center text-[10px] px-0.5">
-              <span className="flex items-center gap-2.5 text-zinc-500 dark:text-white/50">
-                <span className="flex items-center gap-1 font-mono text-[9px]">
-                  <span className="w-2.5 h-0.5 bg-rose-500 inline-block rounded-full shadow-[0_0_6px_#f43f5e]" /> Entren.
+            <div className="flex flex-wrap justify-between items-center gap-2 text-xs px-0.5">
+              <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-zinc-600 dark:text-white/65">
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="w-3 h-0.5 bg-sky-400 inline-block rounded-full" /> Entren.
                 </span>
-                <span className="flex items-center gap-1 font-mono text-[9px]">
-                  <span className="w-2.5 h-0.5 bg-sky-400 inline-block border-b border-dashed border-sky-400" /> Valid.
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="w-3 h-0 inline-block border-t-2 border-dashed border-amber-400" /> Valid.
                 </span>
+                {bestAccuracyEpoch != null && (
+                  <span className="flex items-center gap-1 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Mejor: {bestAccuracyEpoch}
+                  </span>
+                )}
               </span>
-              <span className="text-zinc-800 dark:text-rose-400 font-medium">
+              <span className="text-sky-700 dark:text-sky-300 font-medium">
                 {hasAccuracy ? 'Ampliar →' : '—'}
               </span>
             </div>
-          </div>
+          </button>
 
           <div className="glass-card p-4 rounded-2xl text-xs space-y-2 text-zinc-600 dark:text-white/60">
             <span className="font-semibold text-zinc-900 dark:text-white/90 block border-b border-black/10 dark:border-white/10 pb-1.5">
@@ -1037,7 +1305,7 @@ export const TrainingManagerView: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span>Última lectura</span>
-              <span className="font-mono text-[10px] text-zinc-700 dark:text-white/70 flex items-center gap-1">
+              <span className="font-mono text-xs text-zinc-700 dark:text-white/70 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {telemetry.lastEventAt
                   ? new Date(telemetry.lastEventAt).toLocaleTimeString()
@@ -1077,7 +1345,7 @@ export const TrainingManagerView: React.FC = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="p-3.5 rounded-2xl glass-inset border border-black/10 dark:border-white/10">
-              <span className="text-zinc-500 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+              <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                 Época actual
               </span>
               <div className="text-base font-bold font-mono text-zinc-900 dark:text-white mt-1">
@@ -1085,7 +1353,7 @@ export const TrainingManagerView: React.FC = () => {
               </div>
             </div>
             <div className="p-3.5 rounded-2xl glass-inset border border-black/10 dark:border-white/10">
-              <span className="text-zinc-500 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+              <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                 Último entrenamiento
               </span>
               <div className="text-base font-bold font-mono text-zinc-900 dark:text-white mt-1">
@@ -1095,7 +1363,7 @@ export const TrainingManagerView: React.FC = () => {
               </div>
             </div>
             <div className="p-3.5 rounded-2xl glass-inset border border-black/10 dark:border-white/10">
-              <span className="text-zinc-500 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+              <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                 Última validación
               </span>
               <div className="text-base font-bold font-mono text-zinc-700 dark:text-white/80 mt-1">
@@ -1105,7 +1373,7 @@ export const TrainingManagerView: React.FC = () => {
               </div>
             </div>
             <div className="p-3.5 rounded-2xl glass-inset border border-black/10 dark:border-white/10">
-              <span className="text-zinc-500 dark:text-white/50 text-[10px] uppercase font-bold tracking-wider">
+              <span className="text-zinc-500 dark:text-white/65 text-xs uppercase font-bold tracking-wider">
                 Estado
               </span>
               <div className="text-base font-bold font-mono text-zinc-900 dark:text-white mt-1">

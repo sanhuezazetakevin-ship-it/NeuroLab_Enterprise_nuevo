@@ -148,94 +148,111 @@ export function useTrainingTelemetry(jobId: string | null, options: TelemetryOpt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
-  // Canal primario SSE con eventos nombrados.
+  // Canal primario SSE con eventos nombrados. El JWT no viaja en la URL:
+  // primero se canjea por un ticket de un solo uso.
   useEffect(() => {
     if (!jobId || typeof EventSource === 'undefined') return;
     if (statusRef.current && TERMINAL_STATES.includes(statusRef.current)) return;
 
-    const source = new EventSource(ApiClient.jobEventsUrl(jobId));
+    let source: EventSource | null = null;
     let closed = false;
 
     const close = () => {
       closed = true;
-      source.close();
+      source?.close();
       setIsConnected(false);
     };
 
-    source.onopen = () => {
-      setIsConnected(true);
+    const connect = async () => {
+      let url: string;
+      try {
+        url = await ApiClient.createJobEventsUrl(jobId);
+      } catch {
+        setIsConnected(false);
+        return;
+      }
+      if (closed) return;
+
+      source = new EventSource(url);
+
+      source.onopen = () => {
+        setIsConnected(true);
+      };
+
+      source.addEventListener('snapshot', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as { job: JobSnapshot };
+        if (payload.job) {
+          applySnapshot(payload.job);
+          if (TERMINAL_STATES.includes(payload.job.status)) close();
+        }
+        setLastEventAt(Date.now());
+      });
+
+      source.addEventListener('epoch_end', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          epoch: number;
+          total_epochs: number;
+          progress: number;
+          metrics: Record<string, number>;
+        };
+        if (payload.total_epochs) totalEpochsRef.current = payload.total_epochs;
+        const point = normalizeMetricRow({ epoch: payload.epoch, ...payload.metrics });
+        appendMetrics([point]);
+        if (typeof payload.progress === 'number') setProgress(payload.progress);
+        setLastEventAt(Date.now());
+      });
+
+      source.addEventListener('metrics', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          status: JobStatus;
+          progress: number;
+          metrics: Record<string, unknown>[];
+        };
+        appendMetrics((payload.metrics || []).map(normalizeMetricRow));
+        if (typeof payload.progress === 'number') setProgress(payload.progress);
+        if (payload.status) commitStatus(payload.status);
+        setLastEventAt(Date.now());
+      });
+
+      source.addEventListener('state', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          status: JobStatus;
+          progress: number;
+          error_message?: string | null;
+          metrics_history?: Record<string, unknown>[];
+        };
+        if (payload.metrics_history?.length) {
+          replaceMetrics(payload.metrics_history.map(normalizeMetricRow));
+        }
+        if (typeof payload.progress === 'number') setProgress(payload.progress);
+        commitStatus(payload.status, payload.error_message ?? null);
+        setLastEventAt(Date.now());
+        if (TERMINAL_STATES.includes(payload.status)) close();
+      });
+
+      source.addEventListener('error', (event) => {
+        // Dos casos: evento de negocio `error` del backend o fallo de red del
+        // EventSource. Sólo el primero trae `data`.
+        const data = (event as MessageEvent).data;
+        if (data) {
+          try {
+            const payload = JSON.parse(data) as { detail?: string };
+            if (payload.detail) setErrorMessage(payload.detail);
+          } catch {
+            setErrorMessage('El canal de telemetría reportó un error');
+          }
+          close();
+        } else {
+          setIsConnected(false);
+        }
+      });
     };
 
-    source.addEventListener('snapshot', (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as { job: JobSnapshot };
-      if (payload.job) {
-        applySnapshot(payload.job);
-        if (TERMINAL_STATES.includes(payload.job.status)) close();
-      }
-      setLastEventAt(Date.now());
-    });
-
-    source.addEventListener('epoch_end', (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as {
-        epoch: number;
-        total_epochs: number;
-        progress: number;
-        metrics: Record<string, number>;
-      };
-      if (payload.total_epochs) totalEpochsRef.current = payload.total_epochs;
-      const point = normalizeMetricRow({ epoch: payload.epoch, ...payload.metrics });
-      appendMetrics([point]);
-      if (typeof payload.progress === 'number') setProgress(payload.progress);
-      setLastEventAt(Date.now());
-    });
-
-    source.addEventListener('metrics', (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as {
-        status: JobStatus;
-        progress: number;
-        metrics: Record<string, unknown>[];
-      };
-      appendMetrics((payload.metrics || []).map(normalizeMetricRow));
-      if (typeof payload.progress === 'number') setProgress(payload.progress);
-      if (payload.status) commitStatus(payload.status);
-      setLastEventAt(Date.now());
-    });
-
-    source.addEventListener('state', (event) => {
-      const payload = JSON.parse((event as MessageEvent).data) as {
-        status: JobStatus;
-        progress: number;
-        error_message?: string | null;
-        metrics_history?: Record<string, unknown>[];
-      };
-      if (payload.metrics_history?.length) {
-        replaceMetrics(payload.metrics_history.map(normalizeMetricRow));
-      }
-      if (typeof payload.progress === 'number') setProgress(payload.progress);
-      commitStatus(payload.status, payload.error_message ?? null);
-      setLastEventAt(Date.now());
-      if (TERMINAL_STATES.includes(payload.status)) close();
-    });
-
-    source.addEventListener('error', (event) => {
-      // Dos casos: evento de negocio `error` del backend o fallo de red del
-      // EventSource. Sólo el primero trae `data`.
-      const data = (event as MessageEvent).data;
-      if (data) {
-        try {
-          const payload = JSON.parse(data) as { detail?: string };
-          if (payload.detail) setErrorMessage(payload.detail);
-        } catch {
-          setErrorMessage('El canal de telemetría reportó un error');
-        }
-        close();
-      } else {
-        setIsConnected(false);
-      }
-    });
+    void connect();
 
     return () => {
-      if (!closed) source.close();
+      closed = true;
+      source?.close();
       setIsConnected(false);
     };
   }, [jobId, applySnapshot, appendMetrics, replaceMetrics, commitStatus]);

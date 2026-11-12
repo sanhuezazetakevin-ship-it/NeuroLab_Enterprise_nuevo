@@ -1,0 +1,7 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+# Reglas de errores reales (sintaxis, nombres indefinidos, imports rotos).
+# Se puede ampliar progresivamente sin bloquear el CI por estilo histórico.
+select = ["E9", "F63", "F7", "F82", "F811"]

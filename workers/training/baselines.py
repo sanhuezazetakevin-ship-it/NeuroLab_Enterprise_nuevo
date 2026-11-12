@@ -18,13 +18,16 @@ una red neuronal y no un modelo simple?".
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 
 from metrics import classification_metrics, regression_metrics
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger("neurolab.baselines")
 

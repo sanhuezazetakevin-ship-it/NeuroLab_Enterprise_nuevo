@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroLab Enterprise · Vista previa de la interfaz</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at 15% 10%, #1f1017 0%, #0a0a0d 55%, #07080c 100%);
+      color: #f8fafc;
+    }
+    header { max-width: 1180px; margin: 0 auto 28px; }
+    h1 { font-size: 26px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    p.lead { margin: 0; color: rgba(241,245,249,0.68); font-size: 14px; line-height: 1.6; }
+    .note {
+      display: inline-block; margin-top: 14px; padding: 6px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; color: #6ee7b7;
+      background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.35);
+    }
+    main { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+    figure { margin: 0; }
+    .frame {
+      border-radius: 18px; overflow: hidden;
+      border: 1px solid rgba(244,63,94,0.24);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+      background: #0c0d13;
+    }
+    .frame img { display: block; width: 100%; height: auto; }
+    figcaption { margin-top: 10px; font-size: 13px; color: rgba(241,245,249,0.72); }
+    figcaption strong { color: #fff; font-weight: 600; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; font-size: 12px; color: rgba(241,245,249,0.7); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NeuroLab Enterprise · interfaz actualizada</h1>
+    <p class="lead">
+      Capturas reales tomadas desde la aplicación en ejecución (API en <code>127.0.0.1:8000</code> y web en
+      <code>localhost:5173</code>) con datos reales del proyecto «Predicción de Abandono de Clientes».
+      No son maquetas ni datos simulados.
+    </p>
+    <span class="note">Verde = correcto · Ámbar = advertencia · Rojo = error</span>
+  </header>
+
+  <main>
+    <figure>
+      <div class="frame"><img src="panel-oscuro.jpeg" alt="Panel general en tema oscuro" /></div>
+      <figcaption><strong>Panel general · tema oscuro.</strong> Navegación agrupada por flujo, estado del worker en verde esmeralda, tarjeta «Siguiente paso» y métricas reales del proyecto.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="frame"><img src="panel-claro.jpeg" alt="Panel general en tema claro" /></div>
+      <figcaption><strong>Panel general · tema claro.</strong> Contraste reforzado, tipografía mínima legible y jerarquía visual con el carmesí reservado al acento de marca.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="frame"><img src="entrenamientos-oscuro.jpeg" alt="Orquestador de entrenamientos" /></div>
+      <figcaption><strong>Entrenamientos.</strong> Nuevas métricas de velocidad y tiempo restante, curvas azul (entrenamiento) y ámbar punteada (validación), marcador de mejor época y formulario con etiquetas accesibles.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="frame"><img src="evaluacion-oscuro.jpeg" alt="Evaluación y métricas" /></div>
+      <figcaption><strong>Evaluación y métricas.</strong> Matriz de confusión con aciertos en verde y errores en rojo, leyenda de totales y estados del ciclo de vida con color semántico.</figcaption>
+    </figure>
+  </main>
+</body>
+</html>
